@@ -1,7 +1,7 @@
 # Planewalker
 A hexcrawl through the Outlands of Planescape
 
-Select points on the Outlands map to explore more. See randomly generated hexmaps. 
+Select points on the Outlands map to explore more. See randomly generated hexmaps. Each hex is ~3 miles wide. 
 
 I'm always looking to add more points, functionality, and random generators.
 
