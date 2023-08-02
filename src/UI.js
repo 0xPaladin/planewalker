@@ -1,37 +1,79 @@
 import {DisplayRegion} from './map.js';
+//import poi 
+import {POI} from "./poi.js"
 
 /*
   UI Resources  
 */
 
 const Main = ()=>{}
+
 const Hex = (app)=>{
-  DisplayRegion(app)
-  const {html, region} = app
-  const {poi} = app.state
+  const {html, region, site} = app
+  const {view, poi, hex, encounter} = app.state
+  let _view = view.split(".")
 
-  //random region 
-  const newRegion = ()=>{
-    let r = {
-      seed: [poi.name, chance.natural()].join('.'),
-      parent: region.parent
-    }
+  //get hex data if selected 
+  const {q,r} = hex
+  const _qr = [q,r].join(",")
 
-    //set state and call display 
-    app.setState({
-      region: r
-    })
-    app.setView("Hex")
+  const rEncounter = () => app.setState({encounter : region.encounter()}) 
+  
+  const hasShow = (p) => {
+    return !["dungeon","ruin"].includes(p.what) ? "" : html`<span class="mh2" onClick=${()=>region.ShowSub(app,p)}>[<span class="blue link underline-hover pointer">Show More</span>]</span>`
   }
 
-  return html`
-  <div class="mh2">
-    <div class="flex items-end mv2"><h2 class="pointer dim ma0" onClick=${()=>app.setView("Main")}>Outlands ::</h2><h3 class="ma0 mh1">${poi.name}</h3></div>
+  const siteData = () => html`
+  <div class="f6 mh1">${region.seed.split(".")[1]}</div>
+  <div class="bb bw2 flex items-center justify-between ma1">
+    <div class="f4">${region.primary}, ${region.alignment} [${region.safety}]</div>
+    <div class="br2 bg-light-blue dim pointer tc b white ma1 pa1" onClick=${()=>app.setView("Hex")}>Return to Region</div>
+  </div>
+  <div class="mh2 pt2">
+    <div class="f4">${site.text}</div>
+    ${site.site.map(s=>html`
+    <div>Themes: ${s.themes.join(", ")}
+      ${s.contents.map((c,i)=>html`<div>Area #${i+1}: ${c.join(", ")}</div>`)}
+    </div>`)}
+  </div>
+  `
+
+  const regionData = () => html`
     <div class="f6 mh1">${region.seed.split(".")[1]}</div>
-    <div class="flex items-center mh1">
-      <div><span class="b">Terrain:</span> ${region.parent}</div>
+    <div class="flex items-center ma1">
+      <div class="f4">${region.primary}, ${region.alignment} [${region.safety}]</div>
     </div>
-    <div class="br2 bg-green dim pointer tc b white mh1 pa2 w-25" onClick=${()=>newRegion()}>New Random Region</div>
+    <div class="pa2">${Object.entries(region.places).map(([qr,p])=> html`<div class="ma1 ${qr==_qr ? "underline": ""}">Hex [${qr}] - ${p.name || p.text}${hasShow(p)}</div>`)}</div>
+    <div class="br2 bg-green dim pointer tc b white ma1 pa2" onClick=${()=>rEncounter()}>Random Encounter</div>
+    ${encounter == "" ? "" : html`<div class="mh2">Random Encounter: ${encounter.what}</div>` }
+  `
+
+  return html`
+  <div class="flex flex-wrap items-start justify-center">
+    <div class="mw6 mh2">
+      <div class="flex items-center justify-between mv2">
+        <div class="flex items-end">
+          <h2 class="pointer dim ma0" onClick=${()=>app.setView("Main")}>Outlands ::</h2>
+          <h3 class="ma0 mh1">${poi.name}</h3>
+        </div>
+        <div class="br2 bg-green dim pointer tc b white ma1 pa1" onClick=${()=>app.setRegion(poi)}>Random Region</div>
+      </div>
+      ${region.seed ? _view[1] ? siteData() : regionData() : ""}
+    </div>
+    <svg id="submap" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.com/svgjs">
+      <g id="hex"></g>
+      <g id="site"></g>
+    </svg>
+  </div>
+  `
+}
+
+const Explorers = (app)=>{
+  const {html, region} = app
+
+  return html`
+  <div>
+    <div class="br2 bg-green dim pointer tc b white mh1 pa2" onClick=${()=>newRegion()}>Create a New Explorer</div>
   </div>
   `
 }
@@ -72,4 +114,4 @@ const About = (app)=>{
         `
 }
 
-export {Main, Hex, Dialog, About}
+export {Main, Hex, Dialog, About, Explorers}

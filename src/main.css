@@ -6,6 +6,10 @@ h1, h2, h3 {
   font-family: "MedievalSharp", sans-serif;
 }
 
+.hidden {
+  visibility: hidden;
+}
+
 #footer {
   position: fixed;
   bottom: 5px;
@@ -16,7 +20,7 @@ h1, h2, h3 {
   z-index: 1;
 }
 
-svg {
+#map {
   position: fixed;
   top: 0;
   left: 0;
@@ -26,30 +30,31 @@ svg {
   z-index: 0;
 }
 
-.hidden {
-  visibility: hidden;
-}
-
 .hex {
   stroke: black;
   stroke-width: 0.1;
   cursor: pointer;
   fill: floralwhite;
+  z-index:2;
 }
-
 .hex:hover {
   opacity: 0.5;
 }
-
 .hex.water {
   fill: lightblue;
 }
+.hex.dungeon {
+}
 
-#map-pin path {
+.relief {
+  z-index:2;
+}
+
+#map-pin path, #map-point circle, #creature path, #faction path, #hazard path, #area path{
   fill: inherit;
 }
 
-.poi {
+.poi, .place {
   cursor: pointer;
 }
 
@@ -58,6 +63,23 @@ svg {
   stroke: black;
   stroke-width: 3;
   stroke-dasharray: 4;
+}
+
+circle.place {
+  fill: floralwhite;
+  fill-opacity: .8;
+}
+use.creature {
+  fill: orange;
+}
+use.hazard {
+  fill: orangered;
+}
+use.area {
+  fill: blue;
+}
+use.faction {
+  fill: darkviolet;
 }
 
 /*
