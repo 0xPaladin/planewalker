@@ -30,7 +30,7 @@ const html = htm.bind(h);
 */
 import*as Explorers from './explorers.js';
 import*as UI from './UI.js';
-import {ShowOutlands, DisplayRegion, Resize} from './map.js';
+import {ShowOutlands, Resize, Region} from './map.js';
 
 /*
   Declare the main App 
@@ -44,13 +44,14 @@ class App extends Component {
       showDialog: "",
       poi: {},
       region: {},
-      hex: {},
-      encounter : ""
+      qr: null,
+      regionGen: []
     };
 
     //use in other views 
     this.html = html
     this.region = {}
+    this.hex = {}
   }
 
   // Lifecycle: Called whenever our component is created
@@ -81,12 +82,11 @@ class App extends Component {
       view
     })
 
-    this.map.addClass('hidden')
+    SVG('#map').addClass('hidden')
 
     if (view == "Main") {
-      this.map.removeClass('hidden')
-    }
-    else if (view == "Hex" && SVG('#hex')) {
+      SVG('#map').removeClass('hidden')
+    } else if (view == "Hex" && SVG('#hex')) {
       SVG('#site').addClass('hidden')
       SVG('#hex').removeClass('hidden')
     }
@@ -95,9 +95,10 @@ class App extends Component {
   async setRegion(poi, mainMap=false) {
     const changed = poi.name != this.state.poi.name
     let {terrain, name, alignment} = poi
-    let _seed = chance.natural(), places = {}; 
+    let _seed = chance.natural()
+      , places = {};
 
-    if(mainMap) {
+    if (mainMap) {
       _seed = poi.seed || chance.natural()
       places = poi.places || {}
     }
@@ -110,18 +111,27 @@ class App extends Component {
       alignment
     }
     //set state and call display 
-    this.state.region = Object.assign({},region)
-    this.state.poi = poi 
+    this.state.region = Object.assign({}, region)
+    this.state.poi = poi
     //redraw hex 
     await this.setView("Hex")
-    DisplayRegion(this)
+    this.region = new Region(this,region)
+    this.region.display()
+    //reset hex 
+    this.hex = {} 
+    this.setState({
+      qr : null,
+      regionGen : []
+    })
   }
 
-  setHex(hex) {
-    console.log(hex)
+  setHex(qr) {
+    let i = this.region.ids.indexOf(qr)
+    this.hex = this.region.dHex[i]
     this.setState({
-      hex
+      qr
     })
+    console.log(this.hex)
   }
 
   //main page render 

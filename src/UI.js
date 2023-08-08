@@ -1,7 +1,3 @@
-import {DisplayRegion} from './map.js';
-//import poi 
-import {POI} from "./poi.js"
-
 /*
   UI Resources  
 */
@@ -9,21 +5,67 @@ import {POI} from "./poi.js"
 const Main = ()=>{}
 
 const Hex = (app)=>{
-  const {html, region, site} = app
-  const {view, poi, hex, encounter} = app.state
+  const {html, region, site, hex} = app
+  const {view, poi, qr, regionGen} = app.state
   let _view = view.split(".")
 
-  //get hex data if selected 
-  const {q,r} = hex
-  const _qr = [q,r].join(",")
+  //track feature ids for ordering 
+  let {places={}, explore} = region
+  const _hazard = []
+    , _encounter = []
+    , _site = []
+    , _town = [];
+  Object.entries(places).forEach(([id,f])=>{
+    if (["creature", "lair"].includes(f.what)) {
+      _encounter.push(id)
+    } else if (["hazard", "obstacle", "area"].includes(f.what)) {
+      _hazard.push(id)
+    } else if (["dungeon", "ruin", "landmark", "resource"].includes(f.what)) {
+      _site.push(id)
+    } else if (["outpost", "settlement", "city", "faction"].includes(f.what)) {
+      _town.push(id)
+    }
+  }
+  )
+  const fOrdered = _town.concat(_site, _encounter, _hazard)
 
-  const rEncounter = () => app.setState({encounter : region.encounter()}) 
-  
-  const hasShow = (p) => {
-    return !["dungeon","ruin"].includes(p.what) ? "" : html`<span class="mh2" onClick=${()=>region.ShowSub(app,p)}>[<span class="blue link underline-hover pointer">Show More</span>]</span>`
+  /*
+    Functions for internal sub displays 
+  */
+  //enable hex conent 
+  const Gen = (what)=>{
+    regionGen.push(region[what](hex))
+    app.setState({
+      regionGen
+    })
+  }
+  const GenSplice = (i)=>{
+    regionGen.splice(i, 1)
+    app.setState({
+      regionGen
+    })
   }
 
-  const siteData = () => html`
+  //create a buttion with hex symbole and qr, dropdown with actions that may be taken 
+  let ppl = region.people ? region.people : []
+  const hexButton = (qr)=>html`<div class="f6 link dim dib bg-gray tc br2 pa1" style="min-width:45px;"><span class="hex-marker ${hex.qr ? (qr == hex.qr) ? 'green' : 'white' : 'white'}">⬢</span>${qr}</div>`
+
+  //show blank hex data if clicked on 
+  let selectedHex = ()=>html`
+  <div class="dropdown f4 bb bw2 pb1">
+    <div class="flex items-center">
+      ${hexButton(hex.qr)}
+      <div class="mh1">${hex.place ? (hex.place.name || hex.place.text) : "Open Terrain: "+hex.terrain.type}</div>
+    </div>
+    <div class="dropdown-content bg-white ba bw1 pa1">
+      <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("encounter")}>Random Encounter</div>
+      <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("newExplore")}>Explore</div>
+      ${ppl.includes(hex.qr) ? html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("job", hex)}>Get a Job</div>` : ""}
+    </div>
+  </div>`
+
+  //show site data for ruins/dungeons 
+  const siteData = ()=>html`
   <div class="f6 mh1">${region.seed.split(".")[1]}</div>
   <div class="bb bw2 flex items-center justify-between ma1">
     <div class="f4">${region.primary}, ${region.alignment} [${region.safety}]</div>
@@ -33,21 +75,37 @@ const Hex = (app)=>{
     <div class="f4">${site.text}</div>
     ${site.site.map(s=>html`
     <div>Themes: ${s.themes.join(", ")}
-      ${s.contents.map((c,i)=>html`<div>Area #${i+1}: ${c.join(", ")}</div>`)}
+      ${s.contents.map((c,i)=>html`<div>Area #${i + 1}: ${c.join(", ")}</div>`)}
     </div>`)}
   </div>
   `
 
-  const regionData = () => html`
+  //show region data 
+  const regionData = ()=>html`
     <div class="f6 mh1">${region.seed.split(".")[1]}</div>
     <div class="flex items-center ma1">
-      <div class="f4">${region.primary}, ${region.alignment} [${region.safety}]</div>
+      <h3 class="ma0">${region.primary}, ${region.alignment} [${region.safety}]</h3>
     </div>
-    <div class="pa2">${Object.entries(region.places).map(([qr,p])=> html`<div class="ma1 ${qr==_qr ? "underline": ""}">Hex [${qr}] - ${p.name || p.text}${hasShow(p)}</div>`)}</div>
-    <div class="br2 bg-green dim pointer tc b white ma1 pa2" onClick=${()=>rEncounter()}>Random Encounter</div>
-    ${encounter == "" ? "" : html`<div class="mh2">Random Encounter: ${encounter.what}</div>` }
+    <h3 class="mh2 mv0">Region Features</h3>
+    <div class="pa2">
+      ${hex.i ? selectedHex() : ""} 
+      ${fOrdered.map(_qr=>html`
+      <div class="pointer flex justify-between ma1" onClick=${()=> app.setHex(_qr)}>
+        <div class="flex items-center">
+          ${hexButton(_qr)}
+          <div class="mh1">${places[_qr].name || places[_qr].text}</div>
+        </div>
+      </div>`)}
+    </div>
+    ${regionGen.length >0 ? html`<h3 class="mh2 mv0">Generated</h3>` : ""}
+    ${regionGen.map(([what,data],i)=>html`
+    <div class="mh2 flex justify-between">
+      <div>${what}: ${data.short}</div>
+      <div class="link dim underline-hover hover-red pointer" onClick=${()=>GenSplice(i)}>[X]</div>
+    </div>`)}
   `
 
+  //return final UI 
   return html`
   <div class="flex flex-wrap items-start justify-center">
     <div class="mw6 mh2">

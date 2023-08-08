@@ -1,15 +1,9 @@
-const chance = new Chance()
-const rInt = (RNG,min,max)=>RNG.integer({
-  min,
-  max
-})
-const sumDice = (RNG,dice)=>RNG.rpg(dice, {
-  sum: true
-})
-
 /*
-  Honeycomb
-  https://abbekeultjes.nl/honeycomb/
+  Useful Random Functions 
+*/
+import {RandBetween,SumDice,chance} from "./random.js"
+/*
+  Honeycomb - https://abbekeultjes.nl/honeycomb/
 */
 import "../lib/honeycomb-grid.min.js"
 
@@ -22,12 +16,18 @@ const Hex = Honeycomb.defineHex({
   origin: 'topLeft'
 })
 
-const BaseGrid = (width,height) => new Grid(Hex, rectangle({ width, height}))
+//Basic grid for use 
+const MakeGrid = (width,height) => new Grid(Hex, rectangle({ width, height}))
+let _base = MakeGrid(10,10)
+const BaseHex = {
+  ids : _base.toArray().map(({q,r})=> [q,r].join(",")),
+  hex : _base 
+}
 
 //create a random grid based upon picking random Neighboors
 const RandomGrid = (seed=chance.integer(),n)=>{
   const RNG = new Chance(seed)
-  n = n || 10 + sumDice(RNG, '2d20')
+  n = n || 10 + SumDice('2d20',RNG)
 
   const ids = ["0.0"]
 
@@ -49,7 +49,7 @@ const RandomGrid = (seed=chance.integer(),n)=>{
 //create a random grid based a walk, trying to pick the last chosen id 
 const RandomWalk = (seed=chance.integer(),n)=>{
   const RNG = new Chance(seed)
-  n = n || 10 + sumDice(RNG, '2d20')
+  n = n || 10 + SumDice('2d20',RNG)
 
   const ids = ["0.0"]
   let last = "0.0", i = 0;
@@ -74,11 +74,11 @@ const RandomWalk = (seed=chance.integer(),n)=>{
 
 //create a chain of ids for a terrain 
 const Chain = (RNG,hex,n)=>{
-  const ids = [];
+  const ids = [], _hex = hex.slice();
   
   const claim = (id) => {
     ids.push(id)
-    hex.splice(hex.indexOf(id),1)
+    _hex.splice(_hex.indexOf(id),1)
   }
 
   //claim first hex
@@ -89,13 +89,13 @@ const Chain = (RNG,hex,n)=>{
     //pick hex - split to xy and then add Neighboor 
     const id = RNG.pickone(ids).split(",").map((v,j)=>Number(v) + _N[j]).join(",")
     //check if exists 
-    if (!ids.includes(id) && hex.includes(id)) {
+    if (!ids.includes(id) && _hex.includes(id)) {
       //if not push to ids and set to last 
       claim(id)
     }
   }
 
-  return [ids,hex]
+  return [ids,_hex]
 }
 
-export {BaseGrid as Grid,RandomGrid,Chain,RandomWalk}
+export {MakeGrid,BaseHex, RandomGrid,Chain,RandomWalk}

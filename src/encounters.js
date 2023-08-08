@@ -1,4 +1,12 @@
-const chance = new Chance()
+import {RandBetween, SumDice, Likely, chance} from "./random.js"
+
+/*
+  Contains setting data : elements, magic types, etc 
+*/
+import * as Details from "./data.js"
+
+// fake lookup for monster compendium 
+const MC = {}
 
 //https://www.completecompendium.com/
 
@@ -6,9 +14,6 @@ const airAnimals = ['pteranadon', 'condor', 'eagle/owl', 'hawk/falcon', 'crow/ra
 const earthAnimals = ['dinosaur/megafauna','elephant/mammoth','ox/rhinoceros','bear/ape/gorilla','deer/horse/camel','cat/lion/panther','dog/wolf/boar/pig','snake/lizard/armadillo','mouse/rat/weasel','ant/centipede/scorpion','snail/slug/worm','termite/tick/louse']
 const waterAnimals = ['whale/narwhal','squid/octopus','dolphin/shark','alligator/crocodile','turtle','shrimp/crab/lobster','fish','frog/toad','eel/snake','clam/oyster/snail','jelly/anemone','insect/barnacle']
 const oddities = ['many-heads/no-head','profuse sensory organs','many limbs/tentacles/feelers','shape changing','bright/garish/harsh','web/network','crystalline/glassy','gaseous/misty/illusory','volcanic/explosive','magnetic/repellant','multilevel/tiered','absurd/impossible']
-const elements = ['void','death/darkness','fire/metal/smoke','earth/stone','plants/fungus','water/ice/mist','air/wind/storm','stars/cosmos']
-const magicTypes = ['necromancy','evocation/destruction','conjuration/summoning','illusion/glamor','enchantment/artifice','transformation','warding/binding','restoration/healing','divination/scrying']
-
 
 const Encounters = {
   size (RNG=chance, what) {
@@ -26,25 +31,16 @@ const Encounters = {
     else if (aew == 'w')
       return RNG.pickone(RNG.pickone(waterAnimals).split("/"))
   },
-  Chimera(RNG=chance) {
-    return [Encounters._animal(RNG),Encounters._animal(RNG)].join("/")
-  },
-  Creature(RNG=chance) { 
-    const aew = RNG.weighted(['a', 'e', 'w', 'c'], [3,6,2,1])
-
-    return Encounters.size(RNG,1) + (aew == 'c' ? Encounters.Chimera(RNG) : Encounters._animal(RNG,aew))
+  Aasimon(RNG=chance) {
+    const aasimon = ["Agathinon", "Light", "Deva","Planetar", "Solar"]
+    const what = RNG.weighted(aasimon, [45,30,15,5,1])
+    return what + " Aasimon"
   },
   Archon(RNG=chance) {
     const archons = ["Lantern", "Hound", "Warden","Sword", "Trumpet", "Throne", "Tome"]
     const napp = ["3d6","1d6","1d6","1d6","1d3",1,1]
     const what = RNG.weighted(archons, [7, 19, 16, 11, 14, 5, 3])
     return what + " Archon"
-  },
-  Slaad(RNG=chance) {
-    const slaad = ["Red","Blue","Green","Gray","Death"]
-    const napp = ["3d6","2d6","1d6","1d6","1d4","1d2"]
-    const what = RNG.weighted(slaad, [30,20,15,10,4])
-    return what + " Slaad"
   },
   Guardinal(RNG=chance) {
     const guardinal = ["Cervidal","Lupinal","Equinal","Avoral","Ursinal","Leonal"]
@@ -58,11 +54,30 @@ const Encounters = {
     const what = RNG.weighted(eladrin, [18,22,26,12,16,6])
     return what + " Eladrin"
   },
+  Rilmani(RNG=chance) {    
+    const rilmani = ["Plumach","Abiorach","Ferrumach","Cuprilach","Argenach","Aurumach"]
+    const what = RNG.weighted(rilmani, [33,10,30,20,5,2])
+    return what + " Rilmani"
+  },
+  Modron(RNG=chance) {
+    const base = RNG.weighted(["Monodrone","Duodrone","Tridrone","Quadrone","Pentadrone","Decaton","Nonaton","Octon"],[1,2,2,4,4,2,2,1])
+    return base + " Modron"
+  },
+  Slaad(RNG=chance) {
+    const slaad = ["Red","Blue","Green","Gray","Death"]
+    const napp = ["3d6","2d6","1d6","1d6","1d4","1d2"]
+    const what = RNG.weighted(slaad, [30,20,15,10,4])
+    return what + " Slaad"
+  },
   "Tanar'ri"(RNG=chance) {
     const tanarri = ["Manes","Dretch","Rutterkin","Bar-Lgura","Nabassu","Babau","Uridezu","Armanite","Maurezhi","Bulezau","Vrock","Chasme","Hezrou","Goristo","Glabrezu","Nalafeshnee","Alkilith","Marilith","Wastrilith","Balor"]
     const napp = ["50d10","4d10",1,"2d6",1,1,1,"2d10",1,"3d4","2d4",1,"1d6",1,1,1,"1d3","1d2",1,1]
     const what = RNG.weighted(tanarri, [7,1,2,1,1,5,2,3,2,5,1,3,4,1,2,2,1,1,1,.1])
     return what + " Tanar'ri"
+  },
+  Gehreleth(RNG=chance) {
+    const what = RNG.weighted(["Farastu","Kelubar","Shator"],[2,2,1])
+    return what + "Gehreleth"
   },
   Yugoloth(RNG=chance) {
     const yugoloth = ["Canoloth","Mezzoloth","Piscoloth","Yagnoloth","Nycaloth","Ultroloth","Arcanaloth","Hydroloth","Dergoloth"]
@@ -77,6 +92,7 @@ const Encounters = {
     return what + " Baatezu"
   },
   Elemental(RNG=chance) {
+    //WATER WEIRD, Salamander, Galeb Duhr
     const sz = ["Small","Medium","Large","Huge","Greater","Elder"]
     const napp = ["1d6","1d4","1d2",1,1,1]
     const size = RNG.weighted(sz,[17,20,17,15,13,8]) 
@@ -88,41 +104,136 @@ const Encounters = {
     const napp = [] 
     return RNG.weighted(giants,[25,25,15,15,5,5,5,5,3,1])
   },
-  Undead(RNG=chance) {
-    return RNG.weighted(["Banshee","Death Knight","Ghost","Ghoul","Lich","Mummy","Revenant","Shadow","Vampire","Weight","Wraith"],[1,1,2,6,1,2,2,3,2,6,6])
+  Genie (RNG=chance) {
+    return RNG.weighted(["Jann", "Djinni", "Dao", "Efreeti", "Marid"],[4,2,2,1,1])
   },
-  Monster(RNG=chance) {
-    return RNG.weighted(["Aboleth","Beholder","Couatl","Displacer Beast","Gargoyle","Harpy","Medusa","Mind Flayer","Minotaur","Myconid","Naga","Rakshasa","Treant"],[1,1,1,2,4,4,1,1,4,4,4,1,2])
+  Lycanthrope (RNG=chance) {
+    return "Were"+RNG.weighted(["bear", "boar", "bat", "fox", "rat", "tiger", "wolf"],[2,2,1,1,2,1,4])
+  },
+  /*
+    Crature Type Generators 
+  */
+  Aberration (RNG=chance) {
+    let base = Likely(60,RNG) ? ["Aboleth","Cloaker","Grell","Mind Flayer","Rakshasa","Roper","Yuan-ti"] : ["Beholder","Deepspawn","Morkoth"]
+    return ["Aberration",RNG.pickone(base)]
+  },
+  Animal (RNG=chance) {
+    const aew = RNG.weighted(['a', 'e', 'w', 'c'], [3,6,2,1])
+
+    let what = Encounters.size(RNG,1) + (aew == 'c' ? Encounters.Chimera(RNG) : Encounters._animal(RNG,aew))
+    return ["Animal",what]
+  },
+  Construct (RNG=chance) {
+    let what = RNG.weighted(["Flesh","Clay","Stone","Iron"],[3,4,2,1])
+    return ["Construct",what]
+  },
+  Dragon (RNG=chance) {
+    //age 
+    const age = RNG.weighted(["Wyrmling","Very Young","Young","Juvenile","Young Adult","Adult","Mature Adult","Old","Very Old","Ancient","Wyrm","Great Wyrm"],[5,8,16,20,16,12,8,15,4,3,2,1])
+    //["Couatl"]
+    let base = RNG.bool() ? ["White","Black","Green","Blue","Red"] : ["Brass","Copper","Bronze","Silver","Gold"]
+    return ["Dragon",RNG.weighted(base,[2,3,3,3,1])]
+  },
+  Fey (RNG=chance) {
+    let base = Likely(75,RNG) ? ["Brownie","Dryad","Gremlin","Nereid","Nymph","Pech","Satyr","Sylph","Will O'Wisp"] : ["Phoenix","Unicorn"]
+    return ["Fey",RNG.pickone(base)]
+  },
+  Humanoid (RNG=chance) {
+    let _what = RNG.weighted(["Human","Elf","Dwarf","Gnome","Halfling","Githzerai","Aasimar","Tiefling","Drow","Giant","Lycanthrope"],[3,2,2,1,1,1,1,1,1,1,1])
+    return ["Humanoid",Encounters[_what] ? Encounters[_what](RNG) : _what ]
+  },
+  "Magical Beast" (RNG=chance) {
+    let common = ["Ankheg","Bulette","Carrion Crawler","Cave Fisher","Griffon","Hippogriff","Owlbear","Shambling Mound","Stirge","Wyvern"]
+    let uncommon = ["Basilisk","Cave Fisher","Chimera","Cockatrice","Displacer Beast","Dragonne","Hell Hound","Hydra","Manticore","Naga","Nightmare","Otyugh","Rust Monster","Umber Hulk"]
+    let rare = ["Behir","Catoblepas","Dragon Turtle","Gorgon","Hook Horror","Leucrotta","Mimic","Pegasus","Peryton","Remorhaz","Roc","Purple Worm"]
+    
+    let r = RNG.d10()
+    const base = r < 5 ? common : r < 9 ? uncommon : rare
+    return ["Magical Beast",RNG.pickone(base)]
+  },
+  "Monstrous Humanoid" (RNG=chance) {
+    let common = ["Aarakocra","Bugbear","Centaur","Githyanki","Gnoll","Goblin","Grippli","Harpy","Hobgoblin","Kobold","Kuo-Toa","Lizardfolk","Medusa","Minotaur","Myconid","Orc","Sahuagin","Yeti"]
+    let uncommon = ["Bullywug","Crabman","Doppleganger","Ettercap","Gargoyle","Gibberling","Grimlock","Kenku","Lamia","Locathah","Mold Men","Thri-kreen","Treant","Troglodyte","Wemic"]
+    return ["Monstrous Humanoid",RNG.pickone(Likely(60,RNG) ? common : uncommon)]
+  },
+  Outsider(RNG=chance,{type,weights}){
+    //["Moon Dog","Salamander",Imp,"Ki-rin","Xorn"]
+    const o = weights ? RNG.weighted(Details.outsiders, weights) : type ? type : RNG.pickone(Details.outsiders)
+    console.log(o)
+    return  ['Outsider',Encounters[o](RNG)]
+  },
+  Ooze (RNG=chance) {
+    let what = RNG.bool() ? "Ooze "+Encounters._animal(RNG) : RNG.pickone["Olive Slime","Mustard Jelly","Ocher Jelly","Gray Ooze","Gelatinous Cube","Green Slime"]
+    return ["Ooze",what]
+  },
+  Plant (RNG=chance) {
+    let common = ["Black Pudding","Gas Spore","Mold Men","Myconid","Shrieker","Thornslinger","Treant","Yellow Musk Creeper"]
+    let uncommon = ["Brown Pudding","Choke Creeper","Hangman Tree","Mantrap","Phycomid","Violet Fungus"]
+    return ["Plant",RNG.pickone(Likely(60,RNG) ? common : uncommon)]
+  },
+  Undead(RNG=chance) {
+    let common = ["Ghoul","Skeleton","Shadow","Weight","Zombie"]
+    let uncommon = ["Ghost","Mummy","Revenant","Vampire","Wraith"]
+    let rare = ["Banshee","Death Knight","Lich"]
+
+    let r = RNG.d10()
+    return ["Undead",RNG.pickone(r < 5 ? common : r < 9 ? uncommon : rare)]
+  },
+  Vermin (RNG=chance) {
+    let base = RNG.bool() ? ["Ant","Bee","Beetle","Centipede","Dragonfly","Fly","Leech","Termite","Tick","Wasp"] : ["Rat","Slug","Snake","Toad"]
+    return ["Vermin",RNG.pickone(base)]
+  },
+  /*
+    Major generators 
+  */
+  Chimera(RNG=chance) {
+    return ["Animal",[Encounters._animal(RNG),Encounters._animal(RNG)].join("/")]
+  },
+  Creature(RNG=chance) { 
+    const base = RNG.weighted(['Aberration','Animal','Construct','Dragon','Magical Beast','Ooze','Plant','Undead','Vermin'],[1,6,1,1,4,1,2,1,3])
+    return Encounters[base](RNG)
   },
   Planar (RNG=chance) {
-    let what = RNG.weighted(["Human","Elf","Dwarf","Gnome","Halfling","Githzerai","Other"],[3,2,2,1,1,1,2])
-    what = what != "Other" ? what : RNG.pickone(["Giant","Undead","Monster","Fairy","Lizardfolk","Orc","Hobgoblin","Gnoll","Goblin","Kobold","Aarakocra","Bugbear","Centaur","Drow"])
-    return Encounters[what] ? Encounters[what](RNG) : what
+    //['Aberration','Dragon','Fey','Humanoid','Monstrous Humanoid','Undead']
+    let base = RNG.weighted(['Aberration','Dragon','Fey','Humanoid','Monstrous Humanoid','Undead'],[1,1,2,10,4,2])
+    return Encounters[base](RNG) 
   },
   Petitioner(RNG=chance){
-    return Encounters.Planar(RNG)+" [petitioner]"
+    let [base,what] = Encounters.Planar(RNG)
+    return [base,what+" [petitioner]"]
   },
   Random(RNG=chance, o={}) {
-    let creatures = ["Petitioner", "Outsider", "Planar", "Elemental", "Khaasta", "Kuldurath", "Fhorge", "Rilmani Ferrumach", "Rilmani Cuprilach", "Rilmani Aurumach", "Creature"]
-    let _what = RNG.weighted(creatures, [6, 16, 16, 16, 4, 3, 7, 5, 2, 1, 20])
-    let what = ""
+    //['aberration','animal','construct','dragon','fey','humanoid','magical beast','monstrous humanoid','ooze','outsider','plant','undead','vermin']
+    let creatures = ["Petitioner", "Outsider", "Planar", "Elemental", "Rilmani", "Creature"]
+    let _what = RNG.weighted(creatures, [2, 4, 4, 3, 2, 5])
+
+    let what;
+    if(_what == "Outsider"){
+      what = Encounters.Outsider(RNG,{weights:[4,5,5,5,0,3,3,5,3,0,5,5,5]})
+    }
+    else if(["Elemental", "Rilmani"].includes(_what)){
+      what = Encounters.Outsider(RNG,{type:_what})
+    }
+    else {
+      what = Encounters[_what](RNG)
+    }
+    
+    //get short description and tags 
+    let [base,short,tags] = what 
+
+    //add special nature 
+    if(["Animal","Magical Beast","Vermin"].includes(base)){
+      short += RNG.bool() ? " ["+RNG.pickone(["axiomatic","celestial","anarchic","fiendish"])+"]" : ""
+    }
 
     //determine lair type 
-    let _i = creatures.indexOf(_what)
-    let lair = [0, 1, 2, 7, 8, 9].includes(_i) ? "Outpost" : "Lair"
-
-    //use sub generators 
-    if (_what == "Outsider") {
-      _what = RNG.weighted(["Archon", "Guardinal", "Slaad", "Modron", "Baatezu", "Yugoloth", "Tanar'ri"], [29, 6, 6, 6, 28, 5, 16]) 
-    }
-    what = Encounters[_what] ? Encounters[_what](RNG) : _what 
-    if(_what == "Creature"){
-      what += " [" + RNG.pickone(["axiomatic","celestial","anarchic","fiendish"]) + "]"
-    }
+    let lair = ['Aberration','Dragon','Fey','Humanoid','Monstrous Humanoid','Outsider','Undead'].includes(base) ? "Camp" : "Lair"
 
     return {
-      what,
-      lair
+      base,
+      short,
+      lair,
+      tags
     }
   }
 }

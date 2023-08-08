@@ -30,6 +30,19 @@ h1, h2, h3 {
   z-index: 0;
 }
 
+.dropdown:hover .hex-marker {
+  color: green;
+}
+.shex {
+  display: inline-block;
+  position: relative;
+  top: 0.25em;
+  clip-path: polygon(0% 25%, 0% 75%, 50% 100%, 100% 75%, 100% 25%, 50% 0%);
+  background-color: floralwhite;
+  aspect-ratio: 5/6;
+  min-width: 1em;
+}
+
 .hex {
   stroke: black;
   stroke-width: 0.1;
@@ -106,17 +119,14 @@ use.faction {
 .dropdown {
   position: relative;
   display: inline-block;
-  direction: rtl;
 }
 
 .dropdown-content {
   display: none;
   position: absolute;
   z-index: 1;
-  background-color: #f9f9f9;
   border-radius: 5px;
   min-width: 160px;
-  direction: ltr;
 }
 
 .dropdown-content a {
@@ -133,3 +143,30 @@ use.faction {
 .dropdown:focus .dropdown-content {
   display: block;
 }
+
+/*
+  Starts right and then points down on hover 
+*/
+.arrow {
+  border: solid black;
+  border-width: 0 3px 3px 0;
+  display: inline-block;
+  padding: 3px;
+  transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+}
+.link:hover .arrow {
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+}
+
+.a-left {
+  transform: rotate(135deg);
+  -webkit-transform: rotate(135deg);
+}
+
+.a-up {
+  transform: rotate(-135deg);
+  -webkit-transform: rotate(-135deg);
+}
+
