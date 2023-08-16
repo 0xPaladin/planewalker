@@ -72,62 +72,69 @@ import*as Details from "./data.js"
 */
 
 //Set Explore values on places - can be called to reset 
-const SetExplore = ({place})=>{
+const SetExplore = ({_safety},place)=>{
   let RNG = chance
-  let {diff = Difficulty(RNG)} = place
+  let {diff=Difficulty(RNG)} = place
+  //["perlous", "dangerous", "unsafe", "safe"]
+  let safe = [30, 40, 50, 70][_safety]
 
   let what = ""
     , skills = [];
   const focus = {
     'Cypher'() {
-      return RNG.pickone(['Formula', 'Puzzle'])
-    },
-    'Monster'() {
-      return ""
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Design', 'Puzzle'] : ['Curse'])
+      return what
     },
     'Mechanism'() {
-      return RNG.pickone(['Lock', 'Trap'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Lock'] : ['Trap'])
+      return what
     },
-    'Negotiation'() {
-      return RNG.pickone(['Treaty', 'Trade'])
+    'Monster'() {
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Track'] : ['Attack'])
+      return what
     },
     'Obstacle'() {
-      return RNG.pickone(['Physical', 'Precarious'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Labor'] : ['Precarious'])
+      return what
     },
-    'Thievery'() {
-      return RNG.pickone(['B&E', 'Pickpocket'])
+    'People'() {
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Trade', 'Treaty'] : ['Thieves'])
+      return what
     },
     'Wilderness'() {
-      return RNG.pickone(['Environment', 'Lost'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Hidden Trails'] : ['Environment'])
+      return what
     }
   }
 
   const ExArray = (weights)=>{
     let c = RNG.weighted(challenges, weights)
     let rank = RNG.bool() ? Difficulty(RNG) : diff
-    let check = (rank+1)*4 + (SumDice('4d3') - 8)
-    return [c,focus[c](),rank,check]
+    let check = (rank + 1) * 4 + (SumDice('4d3') - 8)
+    return [c, focus[c](), rank, check]
   }
 
   //exploration challenges  
-  const challenges = ['Cypher', 'Monster', 'Mechanism', 'Negotiation', 'Obstacle', 'Thievery', 'Wilderness']
+  const challenges = ['Cypher', 'Monster', 'Mechanism', 'People', 'Obstacle', 'Wilderness']
   const types = {
-    "creature": [0, 5, 0, 1, 2, 0, 2],
-    "dungeon": [1, 2, 2, 1, 2, 0, 2],
-    "empty": [0, 2, 0, 0, 2, 2, 4],
-    "faction": [2, 1, 0, 5, 0, 2, 0],
-    "hazard": [1, 1, 0, 0, 4, 0, 4],
-    "landmark": [1, 2, 2, 3, 0, 2, 0],
-    "outpost": [2, 1, 0, 4, 0, 3, 0],
-    "resource": [2, 2, 0, 2, 1, 1, 2],
-    "ruin": [1, 2, 2, 1, 2, 1, 1],
-    "settlement": [2, 1, 0, 5, 0, 2, 0],
+    "creature": [0, 5, 0, 1, 2, 2],
+    "dungeon": [1, 2, 2, 1, 2, 2],
+    "area": [0, 2, 0, 1, 2, 5],
+    "wilderness": [0, 2, 0, 1, 2, 5],
+    "faction": [2, 1, 0, 7, 0, 0],
+    "hazard": [1, 1, 0, 0, 4, 4],
+    "obstacle": [1, 1, 0, 0, 4, 4],
+    "landmark": [1, 2, 2, 4, 0, 1],
+    "outpost": [2, 1, 2, 5, 0, 0],
+    "resource": [2, 2, 0, 3, 1, 2],
+    "ruin": [1, 2, 2, 2, 2, 1],
+    "settlement": [2, 1, 1, 6, 0, 0],
   }
 
   // assign challenge group, difficulty, action 
-  let challenge = place ? place.what == "creature" && place.hasJobs ? "outpost" : place.what : "empty"
+  let challenge = place ? (place.what == "creature" && place.hasJobs) ? "outpost" : place.what : "wilderness"
   let data = ExArray(types[challenge])
-  let short = data[0] == "Monster" ? [data[0],data[3]].join(" ") : data[0]+" ["+data[1]+"] "+data[3]
+  let short = data[0] + " [" + data[1] + "] " + data[3]
 
   return {
     data,
@@ -160,7 +167,7 @@ const RandomFaction = (RNG=chance)=>RNG.pickone(RNG.bool() ? Details.factions : 
 const Jobs = (region,place)=>{
   let RNG = chance
 
-  let who = ["outpost", "settlement", "city"].includes(place.what) ? RandomFaction() : place.who 
+  let who = ["outpost", "settlement", "city"].includes(place.what) ? RandomFaction() : place.who
   let what = RNG.pickone(JobTypes)
 
   //get the target, don't use the same faction 

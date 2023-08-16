@@ -1,260 +1,190 @@
-const Gatetowns = {
+const Planes = {
+  "Outlands" : {
+    "name": "Outlands",
+    "alignment": ["neutral"],
+    "display" : "PerilousShores",
+    "childType" : "Region"
+  },
+}
+
+const Regions = {  
+  // Gate Towns 
   "Ecstacy": {
     "name": "Ecstacy",
     "terrain": "plains",
-    "marker": "point",
-    "p": [616, 242],
-    "size": 40,
-    "color": "#ffffff",
-    "seed": 4546517398454272,
     "alignment": ["neutral","good"],
-    "places": {
-      "0,-1": {
-        "what": "city",
-        "name" : "Ecstacy"
-      },
-    }
+    "children": [{
+      "name" : "Ecstacy",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Faunel": {
     "name": "Faunel",
     "terrain": "plains",
-    "marker": "point",
-    "p": [710.5, 247],
-    "size": 40,
-    "color": "#ffffff",
-    "seed": 5282148351213568,
     "alignment": ["neutral"],
-    "places": {
-      "-2,1": {
-        "what": "city",
-        "name" : "Faunel"
-      },
-    }
+    "children": [{
+      "name" : "Faunel",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Sylvania": {
     "name": "Sylvania",
     "terrain": "plains",
-    "marker": "point",
-    "p": [835, 276],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["neutral"],
-    "seed": 3692351834816512,
-    "places": {
-      "3,-2": {
-        "what": "city",
-        "name" : "Sylvania"
-      },
-    }
+    "children": [{
+      "name" : "Sylvania",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Glorium": {
     "name": "Glorium",
-    "marker": "point",
-    "p": [940, 325],
-    "size": 40,
-    "color": "#ffffff",
     "terrain": "mountains",
     "alignment": ["good", "neutral"],
-    "seed": 1606492547448832,
-    "places": {
-      "0,0": {
-        "what": "city",
-        "name" : "Glorium"
-      },
-    }
+    "children": [{
+      "name" : "Glorium",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Xaos": {
     "name": "Xaos",
     "terrain": "hills",
-    "marker": "point",
-    "p": [922, 392],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["neutral"],
-    "seed": 1676002512076800,
-    "places": {
-      "-3,2": {
-        "what": "city",
-        "name" : "Xaos"
-      },
-    }
+    "children": [{
+      "name" : "Xaos",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Bedlam": {
     "name": "Bedlam",
     "terrain": "hills",
-    "marker": "point",
-    "p": [855, 419],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["neutral","evil"],
-    "seed": 8811199552552960,
-    "places": {
-      "1,0": {
-        "what": "city",
-        "name" : "Bedlam"
-      },
-    }
+    "children": [{
+      "name" : "Bedlam",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Plague-Mort": {
     "name": "Plague-Mort",
     "terrain": "desert",
-    "marker": "point",
-    "p": [737, 475],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["chaotic", "evil", "neutral"],
-    "seed": 970060151652352,
-    "places": {
-      "0,1": {
-        "what": "city",
-        "name" : "Plague-Mort"
-      },
-    }
+    "children": [{
+      "name" : "Plague-Mort",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Curst": {
     "name": "Curst",
     "terrain": "hills",
-    "marker": "point",
-    "p": [560, 471],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["evil", "neutral"],
-    "seed" : 5295989667659776,
-    "places": {
-      "-1,-1": {
-        "what": "city",
-        "name" : "Curst"
-      },
-    }
+    "children": [{
+      "name" : "Curst",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Hopeless": {
     "name": "Hopeless",
     "terrain": "plains",
-    "marker": "point",
-    "p": [382, 466],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["evil", "neutral"],
-    "seed" : 1971628493766656,
-    "places": {
-      "-1,0": {
-        "what": "city",
-        "name" : "Hopeless"
-      },
-    }
+    "children": [{
+      "name" : "Hopeless",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Torch": {
     "name": "Torch",
     "terrain": "hills",
-    "marker": "point",
-    "p": [297, 464],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["evil", "neutral"],
-    "seed" : 2602477706805248,
-    "places": {
-      "4,-5": {
-        "what": "city",
-        "name" : "Hopeless"
-      },
-    }
+    "children": [{
+      "name" : "Torch",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Ribcage": {
     "name": "Ribcage",
     "terrain": "mountains",
-    "marker": "point",
-    "p": [153, 423],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["evil", "lawful"],
-    "seed" : 4474594907914240,
-    "places": {
-      "0,1": {
-        "what": "city",
-        "name" : "Ribcage"
-      },
-    }
+    "children": [{
+      "name" : "Ribcage",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Rigus": {
     "name": "Rigus",
     "terrain": "hills",
-    "marker": "point",
-    "p": [82, 382],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["lawful","neutral"],
-    "seed" : 4925662387240960,
-    "places": {
-      "0,-3": {
-        "what": "city",
-        "name" : "Rigus"
-      },
-    }
+    "children": [{
+      "name" : "Rigus",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Automata": {
     "name": "Automata",
     "terrain": "plains",
-    "marker": "point",
-    "p": [87, 318],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["lawful"],
-    "seed" : 365587484114944,
-    "places": {
-      "2,-2": {
-        "what": "city",
-        "name" : "Automata"
-      },
-    }
+    "children": [{
+      "name" : "Automata",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Fortitude": {
     "name": "Fortitude",
     "terrain": "plains",
-    "marker": "point",
-    "p": [155, 288],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["good","neutral","lawful"],
-    "seed" : 2695743011815424,
-    "places": {
-      "3,-2": {
-        "what": "city",
-        "name" : "Fortitude"
-      },
-    }
+    "children": [{
+      "name" : "Fortitude",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Excelsior": {
     "name": "Excelsior",
     "terrain": "hills",
-    "marker": "point",
-    "p": [243, 264],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["good","lawful"],
-    "seed" : 3682969600393216,
-    "places": {
-      "0,-2": {
-        "what": "city",
-        "name" : "Excelsior"
-      },
-    }
+    "children": [{
+      "name" : "Excelsior",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
   },
   "Tradegate": {
     "name": "Tradegate",
     "terrain": "forest",
-    "marker": "point",
-    "p": [431, 238],
-    "size": 40,
-    "color": "#ffffff",
     "alignment": ["good"],
-    "seed" : 7422549197586432,
-    "places": {
-      "3,0": {
-        "what": "city",
-        "name" : "Tradegate"
-      },
-    }
-  },
+    "children": [{
+      "name" : "Tradegate",
+      "what" : "settlement",
+      "scale" : 3
+    }],
+    "parent" : "Outlands"
+  }
 }
 
 const Points = {
@@ -396,6 +326,4 @@ const Points = {
   
 }
 
-const POI = Object.assign({},Gatetowns,Points)
-
-export {POI}
+export {Planes,Regions}

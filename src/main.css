@@ -10,6 +10,28 @@ h1, h2, h3 {
   visibility: hidden;
 }
 
+#background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: lightgray;
+  z-index: 0;
+}
+#plane-symbols {
+  opacity : 0.5;
+}
+
+#active-svg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
 #footer {
   position: fixed;
   bottom: 5px;
@@ -20,19 +42,6 @@ h1, h2, h3 {
   z-index: 1;
 }
 
-#map {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: lightgray;
-  z-index: 0;
-}
-
-.dropdown:hover .hex-marker {
-  color: green;
-}
 .shex {
   display: inline-block;
   position: relative;
@@ -55,8 +64,6 @@ h1, h2, h3 {
 }
 .hex.water {
   fill: lightblue;
-}
-.hex.dungeon {
 }
 
 .relief {
@@ -118,7 +125,6 @@ use.faction {
 */
 .dropdown {
   position: relative;
-  display: inline-block;
 }
 
 .dropdown-content {
@@ -144,6 +150,9 @@ use.faction {
   display: block;
 }
 
+.dropdown:hover .hex-marker {
+  color: green;
+}
 /*
   Starts right and then points down on hover 
 */

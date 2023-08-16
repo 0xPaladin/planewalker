@@ -1,137 +1,168 @@
+//array from 
+const BuildArray = (n,f)=>Array.from({
+  length: n
+}, f)
+
 /*
   UI Resources  
 */
 
 const Main = ()=>{}
 
-const Hex = (app)=>{
-  const {html, region, site, hex} = app
-  const {view, poi, qr, regionGen} = app.state
-  let _view = view.split(".")
+const Site = (app) => {
+  const {html,areas,area} = app
+  const {view, iframe, generated} = app.state
+  const {region} = area
+  const {delves} = region
 
-  //track feature ids for ordering 
-  let {places={}, explore} = region
-  const _hazard = []
-    , _encounter = []
-    , _site = []
-    , _town = [];
-  Object.entries(places).forEach(([id,f])=>{
-    if (["creature", "lair"].includes(f.what)) {
-      _encounter.push(id)
-    } else if (["hazard", "obstacle", "area"].includes(f.what)) {
-      _hazard.push(id)
-    } else if (["dungeon", "ruin", "landmark", "resource"].includes(f.what)) {
-      _site.push(id)
-    } else if (["outpost", "settlement", "city", "faction"].includes(f.what)) {
-      _town.push(id)
-    }
-  }
-  )
-  const fOrdered = _town.concat(_site, _encounter, _hazard)
+  //content of an area 
+  let ccolors = ["hazard","red","discovery","blue","creature","orange","leader","purple"]
+  const perContent = ([c,i]) => html`
+  <div class="flex items-center tc pointer ${"bg-"+ccolors[ccolors.indexOf(c)+1]} br2 white b dim pa1">
+    <span>${i}</span>
+    <img src=${"img/"+c+".png"} width="17" height="17"></img>
+  </div>
+  `
 
-  /*
-    Functions for internal sub displays 
-  */
-  //enable hex conent 
-  const Gen = (what)=>{
-    regionGen.push(region[what](hex))
-    app.setState({
-      regionGen
-    })
-  }
-  const GenSplice = (i)=>{
-    regionGen.splice(i, 1)
-    app.setState({
-      regionGen
-    })
-  }
-
-  //create a buttion with hex symbole and qr, dropdown with actions that may be taken 
-  let ppl = region.people ? region.people : []
-  const hexButton = (qr)=>html`<div class="f6 link dim dib bg-gray tc br2 pa1" style="min-width:45px;"><span class="hex-marker ${hex.qr ? (qr == hex.qr) ? 'green' : 'white' : 'white'}">⬢</span>${qr}</div>`
-
-  //show blank hex data if clicked on 
-  let selectedHex = ()=>html`
-  <div class="dropdown f4 bb bw2 pb1">
-    <div class="flex items-center">
-      ${hexButton(hex.qr)}
-      <div class="mh1">${hex.place ? (hex.place.name || hex.place.text) : "Open Terrain: "+hex.terrain.type}</div>
-    </div>
-    <div class="dropdown-content bg-white ba bw1 pa1">
-      <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("encounter")}>Random Encounter</div>
-      <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("newExplore")}>Explore</div>
-      ${ppl.includes(hex.qr) ? html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("job", hex)}>Get a Job</div>` : ""}
-    </div>
+  const perArea = (a,i) => html`
+  <div class="flex items-center justify-between">
+    <div class="flex items-center"> 
+      <div class="f6 link dim dib bg-gray br2 tc white b pa1" style="min-width:45px;">#${i + 1}</div>
+      <div class="mh2">${a.text}</div>
+    </div> 
+    <div class="flex items-center">${Object.entries(a.contents).map(perContent)}</div>
   </div>`
 
   //show site data for ruins/dungeons 
-  const siteData = ()=>html`
-  <div class="f6 mh1">${region.seed.split(".")[1]}</div>
+  return html`
   <div class="bb bw2 flex items-center justify-between ma1">
-    <div class="f4">${region.primary}, ${region.alignment} [${region.safety}]</div>
-    <div class="br2 bg-light-blue dim pointer tc b white ma1 pa1" onClick=${()=>app.setView("Hex")}>Return to Region</div>
+    <div class="f4">${region.name}, ${region.terrain}, ${region.alignment} [${region.safety}]</div>
+    <div class="br2 bg-light-blue dim pointer tc b white ma1 pa1" onClick=${()=>app.setArea(region.id)}>Return to Region</div>
   </div>
   <div class="mh2 pt2">
-    <div class="f4">${site.text}</div>
-    ${site.site.map(s=>html`
-    <div>Themes: ${s.themes.join(", ")}
-      ${s.contents.map((c,i)=>html`<div>Area #${i + 1}: ${c.join(", ")}</div>`)}
-    </div>`)}
-  </div>
-  `
-
-  //show region data 
-  const regionData = ()=>html`
-    <div class="f6 mh1">${region.seed.split(".")[1]}</div>
-    <div class="flex items-center ma1">
-      <h3 class="ma0">${region.primary}, ${region.alignment} [${region.safety}]</h3>
+    <div class="f4">${area.text}</div>
+    <div><span class="b">Themes:</span> ${area.themes.join(", ")}</div>
+    <div class="f5 ba mv1 pa1">
+      ${area.children.map(perArea)}
     </div>
-    <h3 class="mh2 mv0">Region Features</h3>
-    <div class="pa2">
-      ${hex.i ? selectedHex() : ""} 
-      ${fOrdered.map(_qr=>html`
-      <div class="pointer flex justify-between ma1" onClick=${()=> app.setHex(_qr)}>
-        <div class="flex items-center">
-          ${hexButton(_qr)}
-          <div class="mh1">${places[_qr].name || places[_qr].text}</div>
-        </div>
-      </div>`)}
-    </div>
-    ${regionGen.length >0 ? html`<h3 class="mh2 mv0">Generated</h3>` : ""}
-    ${regionGen.map(([what,data],i)=>html`
-    <div class="mh2 flex justify-between">
-      <div>${what}: ${data.short}</div>
-      <div class="link dim underline-hover hover-red pointer" onClick=${()=>GenSplice(i)}>[X]</div>
-    </div>`)}
-  `
-
-  //return final UI 
-  return html`
-  <div class="flex flex-wrap items-start justify-center">
-    <div class="mw6 mh2">
-      <div class="flex items-center justify-between mv2">
-        <div class="flex items-end">
-          <h2 class="pointer dim ma0" onClick=${()=>app.setView("Main")}>Outlands ::</h2>
-          <h3 class="ma0 mh1">${poi.name}</h3>
-        </div>
-        <div class="br2 bg-green dim pointer tc b white ma1 pa1" onClick=${()=>app.setRegion(poi)}>Random Region</div>
-      </div>
-      ${region.seed ? _view[1] ? siteData() : regionData() : ""}
-    </div>
-    <svg id="submap" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.com/svgjs">
-      <g id="hex"></g>
-      <g id="site"></g>
-    </svg>
   </div>
   `
 }
 
+const Region = (app) => {
+  const {html,areas,area} = app
+  const {view, iframe, generated} = app.state
+  const {children, people} = area
+
+  //generators 
+  const Gen = (what,i)=>{
+    generated.push(area[what](area.childDisplay[i]))
+    app.setState({
+      generated
+    })
+  }
+  const GenSplice = (i)=>{
+    generated.splice(i, 1)
+    app.setState({
+      generated
+    })
+  }
+
+  const MFCG = (mfcg) => {
+    app.setState({
+      iframe : mfcg
+    })
+  }
+  
+  //hex button 
+  const hexButton = (id,n)=>html`<div class="f6 white link dim dib bg-gray tc br2 pa1" style="min-width:45px;"><span class="hex-marker">${n > 1 ? n : ""}⬢</span></div>`
+
+  //handle drowdown for every features 
+  const dropdown = (c,i) => html`
+  <div class="pointer dropdown f5 mv1">
+    <div class="flex items-center">
+      ${hexButton(i,c.size)}
+      <div class="mh1">${c.name || c.text}</div>
+    </div>
+    <div class="dropdown-content bg-white ba bw1 pa1">
+      ${BuildArray(c.size,(v,j)=>j).map(j => html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>area.showChild(c,j)}>Show Site ${c.size > 1 ? j+1 : ""}</div>`)} 
+      <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("encounter",i)}>Random Encounter</div>
+      <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("newExplore",i)}>Explore</div>
+      ${people.includes(i) ? html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("job",i)}>Get a Job</div>` : ""}
+      ${people.includes(i) ? html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("NPC",i)}>Generate a NPC</div>` : ""}
+      ${c.mfcg ? html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>MFCG(c.mfcg)}>See MFCG</div>` : ""}
+    </div>
+  </div>
+  `
+
+  //main region data 
+  return html`
+  <div class="flex items-end mv2">
+    <h2 class="pointer dim ma0">${area.parent.name} ::</h2>
+    <div class="dropdown">
+      <div class="flex items-end pointer underline-hover">
+        <h3 class="ma0 mh1">${area.name}</h3>
+        <span class="f5 link dim dib bg-gray white tc br2 mh1 pa1 ph2">✎</span>
+      </div>
+      <div class="f4 dropdown-content bg-white ba bw1 pa1">
+        <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> area.randomize()}>Randomize</div>
+        <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> area.save()}>Save</div>
+        <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> area.neighbor() }>Similar Neighbor</div>
+      </div>
+    </div>
+  </div>
+  <div class="flex items-center ma1">
+    <h3 class="ma0">${area.terrain[0]}, ${area.alignment} [${area.safety}]</h3>
+  </div>
+  <div class="ma2">${area.childDisplay.map(dropdown)}</div>
+  `
+}
+
+const Area = (app) => {
+  const {html,areas,area} = app
+  const {view, iframe, generated} = app.state
+
+  //svg div 
+  const svg = html`
+  <svg id="map" height="600px" width="600px" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.com/svgjs">
+    <g id="hex"></g>
+  </svg>
+  `
+
+  //iframe 
+  const iDiv = html`
+  ${area.iframe != iframe ? html`<div class="dib br2 bg-light-blue dim pointer tc b white pa1" onClick=${()=>app.setState({iframe:area.iframe})}>Back</div>` : ""}
+  <iframe id="i-map" src=${iframe} height="600px" width="600px"></iframe>
+  `
+
+  const sub = {Region,Site}
+  const subView = sub[view.split(".")[1]]
+  //return final UI 
+  return html`
+    <div class="flex justify-center items-start">
+      <div class="bg-white-70 br2 mw6 h-100 mh2 pa1">
+        ${subView(app)}
+        ${generated.length >0 ? html`<h3 class="mh2 mv0">Generated</h3>` : ""}
+        ${generated.map(([what,data],i)=>html`
+        <div class="mh2 flex justify-between">
+          <div>${what}: ${data.short}</div>
+          <div class="link dim underline-hover hover-red pointer" onClick=${()=>GenSplice(i)}>[X]</div>
+        </div>`)}
+      </div>
+      <div class="bg-white-70 br2 pa2 ph4">
+        ${!iframe ? svg : iDiv}
+      </div>
+    </div>
+  `
+}
+
+
 const Explorers = (app)=>{
-  const {html, region} = app
+  const {html} = app
 
   return html`
   <div>
-    <div class="br2 bg-green dim pointer tc b white mh1 pa2" onClick=${()=>newRegion()}>Create a New Explorer</div>
+    <div class="br2 bg-green dim pointer tc b white mh1 pa2" onClick=${()=>app.newExplorer()}>Create a New Explorer</div>
   </div>
   `
 }
@@ -172,4 +203,4 @@ const About = (app)=>{
         `
 }
 
-export {Main, Hex, Dialog, About, Explorers}
+export {Main, Area, Dialog, About, Explorers}

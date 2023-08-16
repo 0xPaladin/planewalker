@@ -2,85 +2,72 @@ var DB = localforage.createInstance({
   name: "Explorers"
 });
 
-const chance = new Chance()
+import {RandBetween, SumDice, Likely, chance} from "./random.js"
 
-/*
-  Stats : Hardy, Knowledgeable, Resourceful
-*/
+const People = (RNG=chance)=>{
+  let common = ["Human", "Elf", "Dwarf", "Gnome", "Halfling", "Githzerai", "Aasimar", "Tiefling"]
+  let uncommon = ["Aarakocra", "Bugbear", "Centaur", "Githyanki", "Gnoll", "Goblin", "Grippli", "Hobgoblin", "Kobold", "Lizardfolk", "Minotaur", "Myconid", "Orc", "Sahuagin", "Yeti"]
 
+  return RNG.pickone(Likely(60, RNG) ? common : uncommon)
+}
 
-const Backgrounds = {
-  "soldier" : {
-    "name" : "Soldier",
-    "stats" : [3,1,2],
-    "extras" : ["Conditioned","Survival Training"]
-  },
-  "merchant" : {
-    "name" : "Merchant",
-    "stats" : [2,3,1],
-    "extras" : ["Haggler","Hard Bargain"]
-  },
-  "explorer" : {
-    "name" : "Explorer",
-    "stats" : [2,1,3],
-    "extras" : ["Experienced Delver","Survival Knowledge"]
-  },
-  "scoundrel" : {
-    "name" : "Scoundrel",
-    "stats" : [1,2,3],
-    "extras" : ["Off-World Contacts","The Highest Bidders"]
-  },
-  "navigator" : {
-    "name" : "Navigator",
-    "stats" : [1,3,2],
-    "extras" : ["Sightseer","Pathfinder"]
-  },
-  "freelancer" : {
-    "name" : "Freelancer",
-    "stats" : [3,2,1],
-    "extras" : ["Work-for-Hire","Well-Travelled"]
-  },
+const Abilities = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"]
+const Skills = {
+  "Strength": [],
+  "Dexterity": [],
+  "Constitution": [],
+  "Intelligence": [],
+  "Wisdom": [],
+  "Charisma": []
 }
 
 class Explorer {
-  constructor (b) {
-    this.id = chance.hash()
+  constructor(id=chance.hash()) {
+    this.id = id
+    let RNG = new Chance(this.id)
+
+    this.people = People(RNG)
+
+    //generate abilities 
+    let abilities = Object.fromEntries(Abilities.map(a=>[a, [0, 0]]))
+    //shuffle abilities to pick core and max first
+    let ca = RNG.shuffle(Abilities)
+
+    //pick base ability scores 
+    abilities[ca[0]] = [4, 4]
+    let ap = 5
+    for(let i = 1; i < ca.length; i++){
+      let n = RNG.d4()
+      n = n < ap ? n : ap 
+      abilities[ca[i]][0] += n 
+
+      ap -= n
+      if(ap == 0)
+        break
+    }
+
+    //pick ability feats 
+    let af = 11
+
+    this.abilities = abilities
 
     this.state = {
-      b,
-      stats : this.background.stats.slice(),
-      silver : 50,
-      scrap : [5,0],
-      relics : [1,0],
-      quests : [],
-      stamina : [5,5], 
-      water : [3,3],
-      location : ""
+      jink: {},
+      quests: [],
+      items: [],
+      location: ""
     }
   }
-  get background () {
-    return Backgrounds[this.state.b]
+  save() {
+    DB.setItem(this.id, this.state)
   }
-  test (diff, sid) {
-    //get skill value based upon stat id 
-    let ids = ["H","K","R"] 
-    let val = this.state.stats[ids.indexOf(sid)]
-    
-    let roll = chance.rpg(diff+'d6')
-    let pass = roll.reduce((sum,r)=>sum+(r<=val ? 1 : 0)) >= diff
-    return {roll,pass}
-  }
-  save () {
-    DB.setItem(this.id,this.state)
-  }
-  static async load (id) {
+  static async load(id) {
     //load state 
     let state = await DB.getItem(id)
     //create new explorer and apply state 
-    let E = new Explorer()
-    E.id = id 
-    Object.assign(E.state,state) 
-    return E 
+    let E = new Explorer(id)
+    Object.assign(E.state, state)
+    return E
   }
 }
 

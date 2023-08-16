@@ -5,6 +5,46 @@ import {RandBetween, SumDice, Likely, chance} from "./random.js"
 */
 import * as Details from "./data.js"
 
+/*
+  NPC Data 
+*/
+const Occupations = {
+  "Outsider": ['hermit/prophet','fugitive/outlaw/exile','fugitive/outlaw/exile','barbarian','barbarian','beggar/vagrant/refugee','beggar/vagrant/refugee','herder/hunter/trapper','herder/hunter/trapper','diplomat/envoy','rare humanoid','otherworldly/arcane'],
+  "Criminal": ['bandit/brigand/thug','bandit/brigand/thug','cutpurse/thief','cutpurse/thief','bodyguard/tough','bodyguard/tough','burglar','con artist/swindler','dealer/fence','racketeer','lieutenant','boss/kingpin'],
+  "Commoner": ['layabout/simpleton','beggar/urchin','beggar/urchin','child','child','housewife/husband','farmer/herder/hunter','farmer/herder/hunter','laborer/servant','driver/porter/guide','sailor/guard','apprentice/adventurer'],
+  "Tradesperson": ['musician/troubador','artist/actor/acrobat','cobbler/furrier/tailor','weaver/basketmaker','potter/carpenter','mason/baker/chandler','cooper/wheelwright','tanner/ropemaker','stablekeeper/herbalist','vintner/jeweler','inkeep/tavernkeep','smith/armorer'],
+  "Merchant": ['raw materials/supplies','raw materials/supplies','general goods/outfitter','general goods/outfitter','grain/livestock','ale/wine/spirits','clothing/jewelry','weapons/armor','spices/tobacco','labor/slaves','books/scrolls','magic supplies/items'],
+  "Specialist": ['clerk/scribe','undertaker','perfumer','navigator/guide','spy/diplomat','cartographer','locksmith/tinker','architect/engineer','physician/apothecary','sage/scholar','alchemist/astrologer','inventor/wizard'],
+  "Religious": ['heretic/apostate','zealot','mendicant/pilgrim','mendicant/pilgrim','acolyte/novice','acolyte/novice','monk/nun/cultist','preacher/prophet','missionary','templar/protector','priest/cult leader','high priest'],
+  "Security": ['militia','militia','scout/warden','watch/patrol','watch/patrol','raw recruit','foot soldier','foot soldier','archer','officer/constable','cavalry/knight','hero/general'],
+  "Authority": ['courier/messenger','town crier','tax collector','clerk/administrator','clerk/administrator','armiger/gentry','armiger/gentry','magistrate/judge','guildmaster','lesser nobility','greater nobility','ruler/warlord'],
+}
+
+const NPCs = {
+  occupation (RNG=chance,type) {
+    type = type || RNG.weighted(Object.keys(Occupations),[1,1,3,2,1,1,1,1,1])
+    let o = RNG.pickone(RNG.pickone(Occupations[type]).split("/"))
+    let short = type == "Merchant" ? type + " of" + o : o 
+    return [type,short]
+  },
+  common (RNG = chance) {
+    let o = NPCs.occupation(RNG)
+    let p = Encounters.PC(RNG)
+
+    let competence = ["liability","incompetent","competent","adept","exceptional","masterful"]
+    let competent = RNG.weighted(competence,[1,2,4,3,1,1])
+
+    let short = p +" "+ o[1]
+
+    return {
+      short,
+      people : p,
+      occupation : o,
+      competent
+    }
+  }
+}
+
 // fake lookup for monster compendium 
 const MC = {}
 
@@ -77,7 +117,7 @@ const Encounters = {
   },
   Gehreleth(RNG=chance) {
     const what = RNG.weighted(["Farastu","Kelubar","Shator"],[2,2,1])
-    return what + "Gehreleth"
+    return what + " Gehreleth"
   },
   Yugoloth(RNG=chance) {
     const yugoloth = ["Canoloth","Mezzoloth","Piscoloth","Yagnoloth","Nycaloth","Ultroloth","Arcanaloth","Hydroloth","Dergoloth"]
@@ -125,14 +165,14 @@ const Encounters = {
   },
   Construct (RNG=chance) {
     let what = RNG.weighted(["Flesh","Clay","Stone","Iron"],[3,4,2,1])
-    return ["Construct",what]
+    return ["Construct",what+" Golem"]
   },
   Dragon (RNG=chance) {
     //age 
     const age = RNG.weighted(["Wyrmling","Very Young","Young","Juvenile","Young Adult","Adult","Mature Adult","Old","Very Old","Ancient","Wyrm","Great Wyrm"],[5,8,16,20,16,12,8,15,4,3,2,1])
     //["Couatl"]
     let base = RNG.bool() ? ["White","Black","Green","Blue","Red"] : ["Brass","Copper","Bronze","Silver","Gold"]
-    return ["Dragon",RNG.weighted(base,[2,3,3,3,1])]
+    return ["Dragon",RNG.weighted(base,[2,3,3,3,1])+" Dragon"]
   },
   Fey (RNG=chance) {
     let base = Likely(75,RNG) ? ["Brownie","Dryad","Gremlin","Nereid","Nymph","Pech","Satyr","Sylph","Will O'Wisp"] : ["Phoenix","Unicorn"]
@@ -190,13 +230,19 @@ const Encounters = {
     return ["Animal",[Encounters._animal(RNG),Encounters._animal(RNG)].join("/")]
   },
   Creature(RNG=chance) { 
-    const base = RNG.weighted(['Aberration','Animal','Construct','Dragon','Magical Beast','Ooze','Plant','Undead','Vermin'],[1,6,1,1,4,1,2,1,3])
+    const base = RNG.weighted(['Aberration','Animal','Construct','Dragon','Magical Beast','Ooze','Plant','Undead','Vermin'],[1,7,1,1,3,1,2,1,3])
     return Encounters[base](RNG)
   },
   Planar (RNG=chance) {
     //['Aberration','Dragon','Fey','Humanoid','Monstrous Humanoid','Undead']
     let base = RNG.weighted(['Aberration','Dragon','Fey','Humanoid','Monstrous Humanoid','Undead'],[1,1,2,10,4,2])
     return Encounters[base](RNG) 
+  },
+  PC (RNG=chance) {
+    let common = ["Human","Elf","Dwarf","Gnome","Halfling","Githzerai","Aasimar","Tiefling"]
+    let uncommon = ["Aarakocra","Bugbear","Centaur","Githyanki","Gnoll","Goblin","Grippli","Hobgoblin","Kobold","Lizardfolk","Minotaur","Myconid","Orc","Sahuagin","Yeti"]
+    
+    return RNG.pickone(Likely(70,RNG) ? common : uncommon)  
   },
   Petitioner(RNG=chance){
     let [base,what] = Encounters.Planar(RNG)
@@ -205,7 +251,7 @@ const Encounters = {
   Random(RNG=chance, o={}) {
     //['aberration','animal','construct','dragon','fey','humanoid','magical beast','monstrous humanoid','ooze','outsider','plant','undead','vermin']
     let creatures = ["Petitioner", "Outsider", "Planar", "Elemental", "Rilmani", "Creature"]
-    let _what = RNG.weighted(creatures, [2, 4, 4, 3, 2, 5])
+    let _what = RNG.weighted(creatures, [2, 3, 5, 2, 2, 6])
 
     let what;
     if(_what == "Outsider"){
@@ -228,6 +274,9 @@ const Encounters = {
 
     //determine lair type 
     let lair = ['Aberration','Dragon','Fey','Humanoid','Monstrous Humanoid','Outsider','Undead'].includes(base) ? "Camp" : "Lair"
+    if(short.includes("Elemental")) {
+      lair = "Lair"
+    }
 
     return {
       base,
@@ -238,4 +287,4 @@ const Encounters = {
   }
 }
 
-export default Encounters
+export {Encounters,NPCs}
