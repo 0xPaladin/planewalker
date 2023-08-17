@@ -571,7 +571,7 @@ class Region extends Area {
     PS.push(["portal",this._portal.text,1])
     PS.push(...this.lookup("hazard").map(c => ["hazard",c.text,1]))
     PS.push(...this.lookup("resource").map(c => ["wilderness",c.text,1]))
-    PS.push(...this.lookup("creature").map(c => ["creature",c.text,1]))
+    PS.push(...this.lookup("creature").map((c,i) => ["creature",c.text,1,i]))
     PS.push(...this.lookup("dungeon").map(c => ["dungeon",c.text,1]))
     PS.push(...this.lookup("faction").map(c => ["faction",c.text,1]))
     PS.push(["settlement","Settlements",1])
@@ -632,7 +632,7 @@ class Region extends Area {
     
     const Obj = (short) => Object.assign({short})
     //get available creatures 
-    let creature = i == -1 ? chance.bool() ? Encounters.Random(chance,{plane}) : chance.pickone(this._encounters) : this._encounters[i]
+    let creature = i == -1 ? chance.bool() ? Encounters.Random(chance,{plane}) : chance.pickone(this.lookup("creature")) : this.lookup("creature")[i]
     //set basic result
     return ["Encounter", Obj(creature.who || creature.short)]
   }
