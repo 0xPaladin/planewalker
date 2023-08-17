@@ -51,50 +51,38 @@ const Site = (app) => {
 
 const Region = (app) => {
   const {html,areas,area} = app
-  const {view, iframe, generated} = app.state
+  const {view} = app.state
   const {children, people} = area
 
-  //generators 
-  const Gen = (what,i)=>{
-    generated.push(area[what](area.childDisplay[i]))
-    app.setState({
-      generated
-    })
-  }
-  const GenSplice = (i)=>{
-    generated.splice(i, 1)
-    app.setState({
-      generated
-    })
-  }
-
-  const MFCG = (mfcg) => {
-    app.setState({
-      iframe : mfcg
-    })
-  }
-  
   //hex button 
   const hexButton = (id,n)=>html`<div class="f6 white link dim dib bg-gray tc br2 pa1" style="min-width:45px;"><span class="hex-marker">${n > 1 ? n : ""}⬢</span></div>`
 
+  const dropdownOptions = {
+    "wilderness" : ["Random Encounter","Explore"],
+    "hazard" : ["Random Encounter","Explore"],
+    "resource" : ["Random Encounter","Explore"],
+    "creature" : ["Random Encounter","Explore"],
+    "dungeon" : ["Random Encounter","Explore"],
+    "faction" : ["Explore","Get a Job","Generate a NPC"],
+    "settlement" : ["Explore","Get a Job","Generate a NPC"],
+    "portal" : ["New Portal"],
+  }
+  
   //handle drowdown for every features 
-  const dropdown = (c,i) => html`
+  //${BuildArray(c.size,(v,j)=>j).map(j => html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>area.showChild(c,j)}>Show Site ${c.size > 1 ? j+1 : ""}</div>`)} 
+  const dropdown = ([where,text,n,i]) => html`
   <div class="pointer dropdown f5 mv1">
     <div class="flex items-center">
-      ${hexButton(i,c.size)}
-      <div class="mh1">${c.name || c.text}</div>
+      ${hexButton(n)}
+      <div class="mh1">${text}</div>
     </div>
     <div class="dropdown-content bg-white ba bw1 pa1">
-      ${BuildArray(c.size,(v,j)=>j).map(j => html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>area.showChild(c,j)}>Show Site ${c.size > 1 ? j+1 : ""}</div>`)} 
-      <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("encounter",i)}>Random Encounter</div>
-      <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("newExplore",i)}>Explore</div>
-      ${people.includes(i) ? html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("job",i)}>Get a Job</div>` : ""}
-      ${people.includes(i) ? html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>Gen("NPC",i)}>Generate a NPC</div>` : ""}
-      ${c.mfcg ? html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>MFCG(c.mfcg)}>See MFCG</div>` : ""}
+      ${dropdownOptions[where].map(opt => html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>area.random(opt,where,i)}>${opt}</div>`)}
     </div>
   </div>
   `
 
+  let _view = view.split(".")
   //main region data 
   return html`
   <div class="flex items-end mv2">
@@ -105,22 +93,27 @@ const Region = (app) => {
         <span class="f5 link dim dib bg-gray white tc br2 mh1 pa1 ph2">✎</span>
       </div>
       <div class="f4 dropdown-content bg-white ba bw1 pa1">
-        <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> area.randomize()}>Randomize</div>
+        <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> area.random("self")}>Randomize</div>
         <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> area.save()}>Save</div>
-        <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> area.neighbor() }>Similar Neighbor</div>
+        <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> area.random("neighbor") }>Similar Neighbor</div>
       </div>
     </div>
   </div>
   <div class="flex items-center ma1">
     <h3 class="ma0">${area.terrain[0]}, ${area.alignment} [${area.safety}]</h3>
   </div>
-  <div class="ma2">${area.childDisplay.map(dropdown)}</div>
+  <div class="ma2">${area.view[_view[2]].map(dropdown)}</div>
   `
 }
 
 const Area = (app) => {
   const {html,areas,area} = app
   const {view, iframe, generated} = app.state
+
+  const GenSplice = (i) => {
+    generated.splice(i,1)
+    app.setState({generated})
+  }
 
   //svg div 
   const svg = html`
@@ -139,14 +132,14 @@ const Area = (app) => {
   const subView = sub[view.split(".")[1]]
   //return final UI 
   return html`
-    <div class="flex justify-center items-start">
+    <div class="overflow-auto flex flex-wrap justify-center items-start">
       <div class="bg-white-70 br2 mw6 h-100 mh2 pa1">
         ${subView(app)}
         ${generated.length >0 ? html`<h3 class="mh2 mv0">Generated</h3>` : ""}
         ${generated.map(([what,data],i)=>html`
-        <div class="mh2 flex justify-between">
+        <div class="mh2 flex justify-between items-center">
           <div>${what}: ${data.short}</div>
-          <div class="link dim underline-hover hover-red pointer" onClick=${()=>GenSplice(i)}>[X]</div>
+          <div class="pointer white hover-red link dim dib bg-gray tc br2 pa1" onClick=${()=>GenSplice(i)}>X</div>
         </div>`)}
       </div>
       <div class="bg-white-70 br2 pa2 ph4">

@@ -150,6 +150,10 @@ const Encounters = {
   Lycanthrope (RNG=chance) {
     return "Were"+RNG.weighted(["bear", "boar", "bat", "fox", "rat", "tiger", "wolf"],[2,2,1,1,2,1,4])
   },
+  Faction (RNG=chance, alignment = "neutral") {
+    let list = alignment == "neutral" ? RNG.bool() ? Details.factions.sigil : Details.factions.outsiders : Details.factions[alignment]
+    return RNG.pickone(list)
+  },
   /*
     Crature Type Generators 
   */
@@ -198,7 +202,7 @@ const Encounters = {
   },
   Outsider(RNG=chance,{type,weights}){
     //["Moon Dog","Salamander",Imp,"Ki-rin","Xorn"]
-    const o = weights ? RNG.weighted(Details.outsiders, weights) : type ? type : RNG.pickone(Details.outsiders)
+    const o = weights ? RNG.weighted(Details.factions.outsiders, weights) : type ? type : RNG.pickone(Details.factions.outsiders)
     console.log(o)
     return  ['Outsider',Encounters[o](RNG)]
   },
@@ -248,7 +252,30 @@ const Encounters = {
     let [base,what] = Encounters.Planar(RNG)
     return [base,what+" [petitioner]"]
   },
-  Random(RNG=chance, o={}) {
+  CreatureSpecial (RNG,what,nature,p = 50) {
+    //add special nature 
+    if(["Animal","Magical Beast","Vermin"].includes(what.base)){
+      what.short += Likely(p) ? " ["+RNG.pickone(nature)+"]" : ""
+    }
+    return what 
+  },
+  Lair (base, short) {
+    let lair = ['Aberration','Dragon','Fey','Humanoid','Monstrous Humanoid','Outsider','Undead'].includes(base) ? "Camp" : "Lair"
+
+    return lair
+  },
+  Format ([base,short,tags]) {
+    return {
+      base,
+      short,
+      lair : Encounters.Lair(base,short),
+      tags
+    }
+  },
+  /*
+    By plane
+  */
+  Outlands (RNG=chance, o={}) {
     //['aberration','animal','construct','dragon','fey','humanoid','magical beast','monstrous humanoid','ooze','outsider','plant','undead','vermin']
     let creatures = ["Petitioner", "Outsider", "Planar", "Elemental", "Rilmani", "Creature"]
     let _what = RNG.weighted(creatures, [2, 3, 5, 2, 2, 6])
@@ -264,26 +291,58 @@ const Encounters = {
       what = Encounters[_what](RNG)
     }
     
-    //get short description and tags 
-    let [base,short,tags] = what 
+    //add special to creatures
+    Encounters.CreatureSpecial(RNG,what,["axiomatic","celestial","anarchic","fiendish"])
+
+    //format the same  
+    return Encounters.Format(what)
+  },
+  Abyss(RNG=chance, o={}) {
+    let creatures = ["Tanar'ri", "Baatezu", "Petitioner", "Outsider", "Planar",  "Creature"]
+    let _what = RNG.weighted(creatures, [45, 5, 20, 5, 5, 20])
+
+    let what;
+    if(_what == "Outsider"){
+      what = Encounters.Outsider(RNG,{weights:[4,5,5,5,0,3,3,5,3,0,5,5,5]})
+    }
+    else if(["Tanar'ri", "Baatezu"].includes(_what)){
+      what = Encounters.Outsider(RNG,{type:_what})
+    }
+    else {
+      what = Encounters[_what](RNG)
+    }
 
     //add special nature 
-    if(["Animal","Magical Beast","Vermin"].includes(base)){
-      short += RNG.bool() ? " ["+RNG.pickone(["axiomatic","celestial","anarchic","fiendish"])+"]" : ""
-    }
+    Encounters.CreatureSpecial(RNG,what,["anarchic","fiendish"],100)
+    
+    //format the same  
+    return Encounters.Format(what)
+  },
+  Random(RNG=chance, o={}) {
+    let {plane} = o 
 
-    //determine lair type 
-    let lair = ['Aberration','Dragon','Fey','Humanoid','Monstrous Humanoid','Outsider','Undead'].includes(base) ? "Camp" : "Lair"
-    if(short.includes("Elemental")) {
-      lair = "Lair"
+    //use plane based encounters 
+    if(Encounters[plane]) {
+      return Encounters[plane](RNG,o)
     }
+    
+    //['aberration','animal','construct','dragon','fey','humanoid','magical beast','monstrous humanoid','ooze','outsider','plant','undead','vermin']
+    let creatures = ["Petitioner", "Outsider", "Planar", "Elemental", "Creature"]
+    let _what = RNG.weighted(creatures, [2, 4, 6, 2, 6])
 
-    return {
-      base,
-      short,
-      lair,
-      tags
+    let what;
+    if(_what == "Outsider"){
+      what = Encounters.Outsider(RNG,{weights:[4,5,5,5,0,3,3,5,3,0,5,5,5]})
     }
+    else if(["Elemental"].includes(_what)){
+      what = Encounters.Outsider(RNG,{type:_what})
+    }
+    else {
+      what = Encounters[_what](RNG)
+    }
+    
+    //format the same  
+    return Encounters.Format(what)
   }
 }
 

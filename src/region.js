@@ -63,17 +63,17 @@ const AligmentMod = {
   "evil": 3
 }
 
-const Safety = (seed,a=["neutral"])=>{
-  const RNG = new Chance(seed)
+const Safety = (RNG=chance,{base="neutral", alignment})=>{
   //based of parent alignment
-  const alignment = RNG.weighted(...Aligment[RNG.pickone(a)])
+  let _alignment = RNG.weighted(...Aligment[base])
+  _alignment = alignment ? alignment : _alignment
   //safety roll mod by alignment
-  const sR = RNG.d12() + AligmentMod[alignment]
+  const sR = RNG.d12() + AligmentMod[_alignment]
   const _safety = sR <= 1 ? 3 : sR <= 3 ? 2 : sR <= 9 ? 1 : 0
-  const safety = ["perlous", "dangerous", "unsafe", "safe"][_safety]
+  const safety = ["perilous", "dangerous", "unsafe", "safe"][_safety]
 
   return {
-    alignment,
+    alignment: _alignment,
     _safety,
     safety
   }
@@ -192,9 +192,6 @@ import {Encounters, NPCs} from "./encounters.js"
 import*as Details from "./data.js"
 
 const Features = {
-  _faction(RNG) {
-    return RNG.pickone(RNG.bool() ? Details.factions : Details.outsiders)
-  },
   special(RNG) {
     const type = RNG.weighted(['element', 'magic', 'aspect'], [3, 2, 1])
     const what = RNG.pickone(Details[type])
@@ -202,11 +199,12 @@ const Features = {
   },
   hazard(RNG, region) {
     //TODO trap created by local creature /faction
-    let h = ["techtonic:gysers/lava-pits/volcanic", "pitfall:chasm/crevasse/abyss/rift", "ensnaring:bog/mire/tarpit/quicksand", "trap:natural/mechancial/magical", "meteorological:blizzard/thunderstorm/sandstorm", "seasonal:fire/flood/avalanche", "impairing:mist/fog/murk/gloom/miasma"]
-    const site = RNG.weighted(h, [1, 2, 2, 1, 3, 1, 1])
+    let hazard = ["barrier:natural/constructed/magical","techtonic:gysers/lava-pits/volcanic", "pitfall:chasm/crevasse/abyss/rift", "ensnaring:bog/mire/tarpit/quicksand", "trap:natural/mechancial/magical", "meteorological:blizzard/thunderstorm/sandstorm", "seasonal:fire/flood/avalanche", "impairing:mist/fog/murk/gloom/miasma"]
+    //const obstacle = RNG.weighted(["impenetrable:cliff/escarpment/crag/bluff", "penetrable:forest/jungle/morass", "traversable:river/ravine/crevasse/chasm/abyss"], [2, 3, 3, 3])
+    const site = RNG.weighted(hazard, [1,1, 2, 2, 1, 3, 1, 1])
     const [type,what] = site.split(":").map((w,i)=>i == 0 ? w : RNG.pickone(w.split("/")))
     //faction 
-    let faction = type == "trap" ? Features.faction(RNG, region).who : null
+    let faction = ["trap","barrier"].includes(type) ? RNG.pickone(region.lookup("faction")).who : null
     //special nature 
     const special = Likely(10) ? Features.special(RNG) : null
 
@@ -219,44 +217,24 @@ const Features = {
       faction
     }
   },
-  obstacle(RNG, region) {
-    //TODO defensive created by local creature /faction
-    const site = RNG.weighted(["barrier:natural/constructed/magical", "impenetrable:cliff/escarpment/crag/bluff", "penetrable:forest/jungle/morass", "traversable:river/ravine/crevasse/chasm/abyss"], [2, 3, 3, 3])
-    const [type,what] = site.split(":").map((w,i)=>i == 0 ? w : RNG.pickone(w.split("/")))
-    //faction 
-    let faction = type == "barrier" ? Features.faction(RNG, region).who : null
-    //special nature 
-    const special = Likely(10) ? Features.special(RNG) : null
-
-    return {
-      specifics: [type, what],
-      text: "Obstacle: " + what + " [" + type + (faction ? ", " + faction : "") + "]",
-      siteType: "origin unknown",
-      scale: RNG.weighted([0, 1, 2, 3], [4, 4, 2, 2]),
-      special,
-      faction
-    }
-  },
-  area(RNG, region, opts = {}) {
-    let _what = RNG.weighted(["obstacle", "hazard", "wilderness"], [1, 1, 3])
-    _what = opts.what ? opts.what : _what
+  wilderness(RNG, region, opts={}) {
+    const type = RNG.pickone(['element', 'magic', 'aspect'])
+    const what = RNG.pickone(Details[type])
+    const special = Likely(50) ? [type, what] : null
     
-    let data = _what == "wilderness" ? {specifics: "wilderness"} : Features[_what](RNG, region)
-
-    //update data based upon area 
-    const a = {
-      text: _what == "wilderness" ? "Wilderness: " : "Large Area " + data.text,
+    return {
+      specifics: "wilderness",
+      text: "Wilderness: ",
+      siteType: "origin unknown",
       scale: 4,
-      siteType: _what == "wilderness" ? "origin unknown" : data.siteType
+      special
     }
-
-    return Object.assign(data, a)
   },
   landmark(RNG, region) {
     const site = RNG.weighted(["tree", "earth works", "water-based", "faction", "megalith/obelisk/statue"], [3, 3, 2, 1, 2])
     const what = RNG.pickone(site.split("/"))
     //faction 
-    let faction = what == "faction" ? Features.faction(RNG, region).who : null
+    let faction = what == "faction" ? RNG.pickone(region.lookup("faction")).who : null
     //special nature 
     const special = Likely(10) ? Features.special(RNG) : null
 
@@ -282,23 +260,10 @@ const Features = {
       special
     }
   },
-  ruin(RNG) {
-    const site = RNG.weighted(["tomb/crypt/necropolis", "shrine/temple/sanctuary", "mine/quarry/excavation", "ancient outpost", "ancient settlement"], [2, 4, 2, 2, 2])
-    const short = RNG.pickone(site.split("/"))
-
-    //tables to use for generation of areas 
-    const type = site == "ancient outpost" ? "stronghold/fortress" : site == "ancient settlement" ? "ruined settlement" : site
-
-    return {
-      specifics: site,
-      text: "Ruin: " + short,
-      siteType: type,
-      scale: RNG.weighted([0, 1, 2, 3, 4], [4, 4, 2, 1, 1]),
-      short
-    }
-  },
   dungeon(RNG) {
-    const type = RNG.weighted(["caves/caverns", "ruined settlement", "prison", "mine/quarry/excavation", "tomb/crypt/necropolis", "lair/den/hideout", "stronghold/fortress", "shrine/temple/sanctuary", "archive/laboratory", "origin unknown"], [1, 1, 1, 1, 1, 1, 1, 1, 1, 3])
+    const ruin = RNG.weighted(["tomb/crypt/necropolis", "shrine/temple/sanctuary", "mine/quarry/excavation", "stronghold/fortress", "ruined settlement", "archive/laboratory"], [2, 4, 2, 2, 2, 1])
+    const dungeon = RNG.weighted(["caves/caverns", "ruined settlement", "prison", "mine/quarry/excavation", "tomb/crypt/necropolis", "lair/den/hideout", "stronghold/fortress", "shrine/temple/sanctuary", "archive/laboratory", "origin unknown"], [1, 1, 1, 1, 1, 1, 1, 1, 1, 3])
+    const type = RNG.pickone([ruin,dungeon])
     const short = RNG.pickone(type.split("/"))
 
     return {
@@ -309,8 +274,9 @@ const Features = {
       short,
     }
   },
-  creature(RNG) {
-    const specifics = Encounters.Random(RNG)
+  creature(RNG, region) {
+    let plane = region.parent.name
+    const specifics = Encounters.Random(RNG,{plane})
     let {lair, short} = specifics
 
     return {
@@ -322,29 +288,12 @@ const Features = {
       hasJobs: lair == "Camp"
     }
   },
-  lair(RNG) {
-    //add site 
-    return Object.assign(Features.creature(RNG))
-  },
-  outpost(RNG) {
-    const who = RNG.weighted(["tollhouse/checkpoint", "meeting/trading post", "camp/roadhouse/inn", "tower/fort/base"], [2, 3, 3, 1])
-    const short = RNG.pickone(who.split("/"))
+  faction(RNG, {alignment}) {    
+    const who = Encounters.Faction(RNG, alignment)
 
     return {
       specifics: who,
-      text: "Outpost: " + short,
-      siteType: "origin unknown",
-      scale: RNG.weighted([0, 1], [5, 5]),
-      who,
-      short
-    }
-  },
-  faction(RNG, {factions}) {
-    const who = factions ? RNG.pickone(factions) : Features._faction(RNG)
-
-    return {
-      specifics: who,
-      text: "Enclave: " + who,
+      text: "Faction: " + who,
       siteType: "origin unknown",
       scale: RNG.weighted([0, 1, 2, 3], [4, 4, 2, 2]),
       who
@@ -400,22 +349,29 @@ class Region extends Area {
 
     //check for parent 
     let P = this.parent
-    if(!P) {
-      P = new Area(app,app.poi.Planes[this._parent])
-      this._parent = P.id 
-    } 
+    if (!P) {
+      P = new Plane(app,app.poi.Planes[this._parent])
+      this._parent = P.id
+    }
     P._children.push(this.id)
 
-    this.UI = "Area.Region"
+    this.UI = ["Area.Region.PS"]
     //set class
     this.class[0] = "region"
 
     //generates all data 
     //pull data from options to be used for generation 
-    let {terrain, alignment=["neutral"], children=[]} = this.opts
+    let {terrain, alignment=[], children=[]} = this.opts
 
     //establish seeded random 
     const RNG = new Chance(this.id)
+
+    //alignment 
+    this.alignment = RNG.pickone(alignment.concat(this.parent.opts.alignment))
+    //safety 
+    Object.assign(this, Safety(RNG, {
+      alignment : this.alignment
+    }))
 
     //climate 
     this.climate = RNG.weighted(["cold", "temperate", "tropical"], [1, 3, 1])
@@ -423,43 +379,74 @@ class Region extends Area {
     this.terrain = [terrain || RNG.pickone(Object.keys(TerrainTypes))]
     //name 
     this._name = Name(this.id, this.terrain[0])
-    //safety 
-    Object.assign(this, Safety(this.id, alignment))
-    //factions 
-    this.factions = BuildArray(RNG.pickone([1, 2]), ()=>Features._faction(RNG))
+
+    this._portal = this.portal(RNG)
+
+    //automatically generate the following 
+    this.addFeature(RNG.hash(),"wilderness",{terrain:this.terrain[0]})
+    this.addFeature(RNG.hash(),"resource")
+    this.addFeature(RNG.hash(),"faction")
+    BuildArray(4-this._safety, ()=>this.addFeature(RNG.hash(),"creature"))
+    this.addFeature(RNG.hash(),"dungeon")
 
     //number of features 
-    let nF = SumDice("3d3", RNG)
-    //add an area 
-    this.addFeature({
-      f: "area",
-      what : "wilderness"
-    })
+    let nF = SumDice("3d3", RNG) - this._children.length
     //build random 
-    BuildArray(nF, (v,i)=>this.addFeature())
+    if(nF > 0) {
+      BuildArray(nF, ()=>this.addFeature())
+    }
 
     //get hex array
     this.setHex(this.size)
-    
+
     //set PS
     this.PerilousShores()
   }
 
-  randomize() {
-    let R = new Region(this.app,this.opts)
-    this.app.setArea(R.id)
+  random (what,where,i) {
+    let app = this.app 
+    let {generated} = app.state 
+    /*
+      "wilderness" : ["Random Encounter","Explore","Get a Job","Generate a NPC"],
+    "settlement" : ["Explore","Get a Job","Generate a NPC"]
+    */
+    if(what == "self") {
+      let R = new Region(this.app,this.opts)
+      this.app.setArea(R.id)
+    }
+    else if(what == "neighbor") {
+      let opts = JSON.parse(JSON.stringify(this.opts))
+      delete opts.name
+      delete opts.children
+      opts.id = [this.id.split(".")[0], "n", chance.natural()].join(".")
+  
+      let R = new Region(this.app,opts)
+      this.app.setArea(R.id)
+    }
+    else if(what == "Explore") {
+      //generate an explore value 
+      generated.push(["Explore", Quests.SetExplore(where,this._safety)])
+      app.setState({generated})
+    }
+    else if (what == "Get a Job") {
+      generated.push(["Job", Quests.Jobs(this, where)])
+      app.setState({generated})
+    }
+    else if (what == "Generate a NPC") {
+      generated.push(this.NPC(where))
+      app.setState({generated})
+    }
+    else if (what == "Random Encounter") {
+      generated.push(this.encounter(where,i))
+      app.setState({generated})
+    }
+    else if (what == "New Portal") {
+      generated.push(["Portal", this.portal()])
+      app.setState({generated})
+    }
   }
 
-  neighbor() {
-    let opts = this.opts
-    opts.name = null
-    opts.id = [this.id.split(".")[0],"n",chance.natural()].join(".")
-    
-    let R = new Region(this.app,opts)
-    this.app.setArea(R.id)
-  }
-
-  PerilousShores () {
+  PerilousShores() {
     //alignment = ["neutral","chaotic","evil","good","lawful","perilous","safe"] 
     //terrain = ["difficult","island","archipelago","barren","bay","coast","higland","lake","land","lowland","peninsula","wetland","woodland"]
     //["civilized"]
@@ -468,90 +455,85 @@ class Region extends Area {
     let seed = RNG.natural()
 
     //start with alignment and safety 
-    let tags = [RNG.pickone(["land","lake"]),this.alignment,this.safety]
+    let tags = [RNG.pickone(["land", "lake"]), this.alignment, this.safety]
 
     //used in terrain below 
-    const LikelyPush = (P,what) => {
-      if(Likely(P,RNG))
+    const LikelyPush = (P,what)=>{
+      if (Likely(P, RNG))
         tags.push(what)
     }
-    
+
     //add terrain tags 
-    if(this.terrain == "mountains"){
+    if (this.terrain == "mountains") {
       tags.push("highland")
-      LikelyPush(50,"difficult")
-      LikelyPush(75,"land")
-    }
-    else if(this.terrain == "hills") {
-    }
-    else if(this.terrain == "forest") {
+      LikelyPush(50, "difficult")
+      LikelyPush(75, "land")
+    } else if (this.terrain == "hills") {} else if (this.terrain == "forest") {
       tags.push("woodland")
-    }
-    else if(this.terrain == "plains") {
+    } else if (this.terrain == "plains") {
       tags.push("lowland")
-    }
-    else if(this.terrain == "desert") {
+    } else if (this.terrain == "desert") {
       tags[0] = "land"
       tags.push("barren")
-      LikelyPush(50,"difficult")
-      LikelyPush(50,RNG.pickone(["lowland","highland"]))
-    }
-    else if(this.terrain == "swamp") {
+      LikelyPush(50, "difficult")
+      LikelyPush(50, RNG.pickone(["lowland", "highland"]))
+    } else if (this.terrain == "swamp") {
       tags.push("wetland")
-      LikelyPush(65,"lowland")
-      LikelyPush(50,"woodland")
+      LikelyPush(65, "lowland")
+      LikelyPush(50, "woodland")
+    } else if (this.terrain == "water") {
+      tags[0] = RNG.pickone(["island", "archipelago", "coast", "bay", "peninsula"])
+      LikelyPush(50, "woodland")
+      LikelyPush(50, RNG.pickone(["lowland", "highland"]))
     }
-    else if(this.terrain == "water") {
-      tags[0] = RNG.pickone(["island","archipelago","coast","bay","peninsula"])
-      LikelyPush(50,"woodland")
-      LikelyPush(50,RNG.pickone(["lowland","highland"]))
+    if(this.opts.PS) {
+      tags[0] = RNG.pickone(this.opts.PS)
     }
-        
+
     //count settlements
-    let nS = this.children.reduce((sum,c) =>{
-      sum+=(c.what == "settlement" ? c.scale : ["faction","outpost"].includes(c.what) ? 1 : 0)
+    let nS = this.children.reduce((sum,c)=>{
+      sum += (c.what == "settlement" ? c.scale : ["faction", "outpost"].includes(c.what) ? 1 : 0)
       return sum
-    },0)
-    if(nS > 5) {
+    }
+    , 0)
+    if (nS > 5) {
       tags.push("civilized")
     }
 
     //get url string 
-    this.iframe = "https://watabou.github.io/perilous-shores/?seed="+seed+"&tags="+tags.join(",")+"&hexes=1"
+    this.iframe = "https://watabou.github.io/perilous-shores/?seed=" + seed + "&tags=" + tags.join(",") + "&hexes=1"
   }
 
   //add a feature to the region 
-  addFeature(o={}) {
-    let i = this.children.length
-    let _id = [this.id, "f", i].join(".")
-    const RNG = new Chance(_id)
+  addFeature(id = chance.hash(),what,o = {}) {
+    const RNG = new Chance(id)
 
+    //always generate f 
     const fR = RNG.d12() + this._safety
-    let f = fR <= 4 ? "creature" : fR <= 7 ? ["hazard", "obstacle", "area"][fR - 5] : fR <= 11 ? "site" : fR == 12 ? "faction" : "settlement"
-    //get sub 
+    let f = fR <= 4 ? "creature" : fR <= 7 ? "hazard" : fR <= 11 ? "site" : fR == 12 ? "faction" : "settlement"
+    //get type of site  
     if (f == "site") {
-      f = RNG.pickone(["dungeon", "lair", "ruin", "outpost", "landmark", "resource"])
+      f = RNG.pickone(["dungeon", "landmark", "resource"])
     }
-    f = o.f || f
+    f = what ? what : f
 
     //assign feature data 
     let data = Features[f](RNG, this, o)
 
     //terrains 
-    const T = [this.terrain].concat(TerrainTypes[this.terrain])
+    const T = this.terrain.concat(TerrainTypes[this.terrain[0]])
     //terrain based on weights 
-    let ti = i == 0 ? 0 : RNG.weighted([0, 1, 2, 3], [40, 30, 20, 10])
-    data.terrain = [ti == 3 ? RNG.pickone(T[ti]) : T[ti]]
-    if(data.specifics == "wilderness"){
+    let ti = RNG.weighted([0, 1, 2, 3], [40, 30, 20, 10])
+    data.terrain = o.terrain ? [o.terrain] : [ti == 3 ? RNG.pickone(T[ti]) : T[ti]]
+    if (data.specifics == "wilderness") {
       data.text += data.terrain
     }
 
     //get site 
     let opts = {
-      id : _id,
+      id,
       what: f,
       parent: this.id,
-      i,
       type: data.siteType,
       scale: data.scale == 4 ? 0 : data.scale
     }
@@ -569,9 +551,8 @@ class Region extends Area {
       let n = SumDice("2d3", RNG)
 
       S._children = BuildArray(n, (v,j)=>{
-        opts.id = [S.id, "s", j].join(".")
-        opts.i = j
-        opts.text = f == "area" ? data.text : null
+        opts.id = RNG.hash()
+        opts.text = f == "wilderness" ? data.text : null
 
         let s = new Site(this.app,opts)
         return s.id
@@ -583,176 +564,94 @@ class Region extends Area {
     this._children.push(S.id)
   }
 
+  get view () {
+    //Make a format for dropdown options - what,text,n
+    let PS = []
+    PS.push(...this.lookup("wilderness").map(c => ["wilderness",c.text,1]))
+    PS.push(["portal",this._portal.text,1])
+    PS.push(...this.lookup("hazard").map(c => ["hazard",c.text,1]))
+    PS.push(...this.lookup("resource").map(c => ["wilderness",c.text,1]))
+    PS.push(...this.lookup("creature").map(c => ["creature",c.text,1]))
+    PS.push(...this.lookup("dungeon").map(c => ["dungeon",c.text,1]))
+    PS.push(...this.lookup("faction").map(c => ["faction",c.text,1]))
+    PS.push(["settlement","Settlements",1])
+
+    return {PS}
+  }
+
   save() {
-    let name = this.name
-    DB.setItem(this.id, {
-      name
-    })
+    let opts = Object.assign({},this.opts)
+    opts.name = this.name 
+    
+    DB.setItem(this.id, opts)
   }
 
-  //get a list of other regions in the poi to load 
-  async loadList() {
-    let {name} = this.poi
-    //pull keys and filter for the ones with the same name as the poi 
-    let list = []
-    DB.iterate((r,k)=>{
-      let[_name,seed] = k.split(".")
-      if (_name == name) {
-        list.push([k, r._name || seed])
-      }
+  lookup (what) {
+    return this.children.filter(c => c.what == what)
+  }
+
+  portal (RNG = chance) {
+    let parent = this.parent.portal()
+    let self = this.opts.portals ? RNG.weighted(...this.opts.portals) : parent
+
+    let where = RNG.pickone([parent,self]) 
+    //check for random plane 
+    if(where == "random"){
+      where = RNG.pickone(Object.keys(this.app.poi.Planes))
+      where = this.app.poi.Regions[where] ? where : "Outlands"
     }
-    ).then(()=>{
-      //set with the list 
-      this.app.setState({
-        loadList: list
-      })
+    //if it is a plane, pick a region within 
+    if(this.app.poi.Regions[where]) {
+      where = RNG.pickone(Object.keys(this.app.poi.Regions[where]))
     }
-    )
+
+    let timing = RNG.pickone(["Permanent","On a Schedule"])
+    let key = RNG.weighted(["physical","nature","action","thought"],[4,1,2,1])
+    let short = [where,", key: ",key].join("")
+    let text = ["Portal: ",short,", ",timing].join("")
+    
+    return {where,key,text,short}
   }
 
-  //get people inhabiting region 
-  get creatures() {
-    return this.childDisplay.reduce((ppl,c,i)=>{
-      if (["creature", "lair", "faction"].includes(c.what)) {
-        ppl.push(i)
-      }
-      return ppl
-    }
-    , [])
-  }
-
-  get people() {
-    return this.childDisplay.reduce((ppl,c,i)=>{
-      if (["outpost", "settlement", "city", "faction"].includes(c.what)) {
-        ppl.push(i)
-      } else if (["creature", "lair"].includes(c.what) && c.hasJobs) {
-        ppl.push(i)
-      }
-      return ppl
-    }
-    , [])
-  }
-
-  //get sites for exploration and uses for jobs 
-  get sites() {
-    return this.childDisplay.reduce((s,c,i)=>{
-      if (["hazard", "obstacle", "area", "dungeon", "ruin", "landmark", "resource"].includes(c.what)) {
-        s.push(i)
-      }
-      return s
-    }
-    , [])
-  }
-
-  //get sites for exploration and uses for jobs 
-  get delves() {
-    return this.childDisplay.reduce((s,c,i)=>{
-      if (["dungeon", "ruin"].includes(c.what)) {
-        s.push(i)
-      }
-      return s
-    }
-    , [])
-  }
-
-  //get tags for a chosen hex 
-  getTags(qr) {
-    let i = this.ids.indexOf(qr)
-    let terrain = this.terrain[i]
-    let place = this.places[qr]
-
-    return [terrain.type].concat(place ? place.tags || [] : [])
-  }
-
-  newExplore(place) {
-    //generate an explore value 
-    return ["Explore", Quests.SetExplore(this, place)]
-  }
-
-  NPC(place) {
+  NPC(where) {
     let npc = NPCs.common()
 
-    if(place.who && !["settlement","outpost"].includes(place.what)) {
-      npc.people = place.who
+    if (where == "faction") {
+      let who = chance.pickone(this.lookup("faction")).who
+      npc.people = who
       let short = npc.short.split(" ")
-      short[0] = place.who
+      short[0] = who
       npc.short = short.join(" ")
     }
-    
+
     return ["NPC", npc]
-    console.log(npc)
   }
 
-  encounter(place) {
-    let places = this.childDisplay
+  encounter(where,i = -1) {
+    let plane = this.parent.name 
     
-    let makeObj = (short)=>{
-      return {
-        short
-      }
-    }
-
+    const Obj = (short) => Object.assign({short})
     //get available creatures 
-    let id = this.creatures.length > 0 ? chance.pickone(this.creatures) : -1
-    //set basic result - with random 
-    let E = ["Encounter", id > -1 && chance.bool() ? makeObj(places[id].who) : Encounters.Random()]
-
-    if (place) {
-      if (["creature", "lair", "faction"].includes(place.what)) {
-        E[1] = makeObj(place.who)
-      }
-    }
-
-    return E
+    let creature = i == -1 ? chance.bool() ? Encounters.Random(chance,{plane}) : chance.pickone(this._encounters) : this._encounters[i]
+    //set basic result
+    return ["Encounter", Obj(creature.who || creature.short)]
   }
 
-  job(place) {
-    return ["Job", Quests.Jobs(this, place)]
-  }
-
-  showChild (place,i) {
+  showChild(place, i) {
     let id = place.size > 1 ? place._children[i] : place.id
     this.app.setArea(id)
   }
 
-  showSub(hex, i) {
-    const what = this.places[hex.qr]
-    //generate site 
-    const seed = [this.seed, what.what, what.i].join(".")
-    let site = Site(seed, what)
-    site.hex = hex
-    this.app.site = site
-    //set terrain
-    let _hex = site.sites[i].hex
-    _hex.forEach(h=>h.terrain = {
-      type: what.what
-    })
-    console.log(site)
+}
 
-    //hide hex 
-    SVG('#hex').addClass('hidden')
-    //get sub 
-    const g = SVG('#site')
-    g.removeClass('hidden')
-    //empty hex 
-    g.find(".hex").forEach(h=>h.remove())
-    g.find(".dText").forEach(h=>h.remove())
-
-    //display - hex and simple id 
-    _hex.forEach((hex,i)=>{
-      RenderHex(hex, g, this.app)
-      g.text("#" + (i + 1)).move(hex.x, hex.y).addClass('dText')
-    }
-    )
-
-    //move to center 
-    const box = g.bbox()
-    SVG("#submap").attr('viewBox', [box.x, box.y, box.width, box.height].join(" "))
-
-    //set view 
-    this.app.setView("Hex.Site." + i)
+class Plane extends Area {
+  constructor (app, opts) {
+    super(app, opts);
   }
 
+  portal () {   
+    return this.opts.portals ? chance.bool() ? chance.weighted(...this.opts.portals) : this.opts.name : this.opts.name
+  }
 }
 
 /*
@@ -811,77 +710,12 @@ const RenderPlaces = (hex,g,app)=>{
 
 //main map display 
 const Symbols = {}
-const ShowOutlands = (app)=>{
-  //add map 
-  const svg = app.svg = SVG('#map')
-  //add two groups 
-  const map = app.map = SVG('#outlands')
-  //map symbols 
-  SVG.find('symbol').forEach(s=>{
-    let id = s.attr('id')
-    Symbols[id] = s
-  }
-  )
-
-  return
-
-  //place POI 
-  Object.entries(POI).forEach(([id,poi])=>{
-    let {p, size, marker} = poi
-    p[0] -= size / 2
-    p[1] -= size / 2
-
-    //set marker and create click event 
-    let what = map.use(Symbols["map-" + marker]).data('poi', poi).addClass('poi ' + marker).fill(poi.color).size(size).move(...p)
-    what.click(function(e) {
-      let _poi = this.data('poi')
-      console.log(_poi)
-      app.setRegion(_poi, {
-        mainMap: true
-      })
-    })
-  }
-  )
-
-  //svg.use(symbols[10]).move(200, 200)
-  Resize(app)
-
-  SVG('#outlands').click(function(e) {
-    //find exact position of click 
-    let {x, y} = e
-    let {translateX, translateY} = this.transform()
-    let p = [x - translateX, y - translateY]
-
-    console.log(p)
-  })
+//map symbols 
+SVG.find('symbol').forEach(s=>{
+  let id = s.attr('id')
+  Symbols[id] = s
 }
+)
 
 export {Region}
 
-/*
-//display 
-  grid.forEach((hex,i)=> {
-    const qr = [hex.q,hex.r]
-    const d = grid.distance(c, qr)
-    if(d > 4)return
-    
-    renderSVG(hex,i, g)
-  })
-
-  const grid = new Grid(Hex,rectangle({
-  width: 9,
-  height: 9
-}))
-
-show all symbols 
-Object.values(Symbols).forEach((s,i) => {
-    let sz = 50
-    let x = i%20 * 50 
-    let y = Math.floor(i/20) * 75
-    let relief = app.svg.use(s).size(sz,sz).move(x,y)
-    relief.click(function(){
-      console.log(this.node.href)
-    } )
-  })
-
-  */

@@ -153,7 +153,7 @@ class Site extends Area {
     let RNG = new Chance(this.id)
 
     //class and ui 
-    this.UI = "Area.Site"
+    this.UI = ["Area.Site.Hex"]
     this.class[0] = "site"
     
     //type of site 

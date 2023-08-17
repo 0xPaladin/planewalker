@@ -3,6 +3,7 @@ import {RandBetween, SumDice, Likely, Difficulty, chance} from "./random.js"
   Contains setting data : elements, magic types, etc 
 */
 import*as Details from "./data.js"
+import {Encounters, NPCs} from "./encounters.js"
 
 /*
   E, Explore: Hunt, Move, Muscle 
@@ -72,11 +73,13 @@ import*as Details from "./data.js"
 */
 
 //Set Explore values on places - can be called to reset 
-const SetExplore = ({_safety},place)=>{
+const SetExplore = (where,safety,diff)=>{
   let RNG = chance
-  let {diff=Difficulty(RNG)} = place
+  
+  //difficulty 
+  diff = diff === undefined ? Difficulty(RNG) : diff 
   //["perlous", "dangerous", "unsafe", "safe"]
-  let safe = [30, 40, 50, 70][_safety]
+  let safe = [30, 40, 50, 70][safety]
 
   let what = ""
     , skills = [];
@@ -132,13 +135,12 @@ const SetExplore = ({_safety},place)=>{
   }
 
   // assign challenge group, difficulty, action 
-  let challenge = place ? (place.what == "creature" && place.hasJobs) ? "outpost" : place.what : "wilderness"
-  let data = ExArray(types[challenge])
+  let data = ExArray(types[where])
   let short = data[0] + " [" + data[1] + "] " + data[3]
 
   return {
     data,
-    challenge,
+    where,
     short
   }
 }
@@ -162,22 +164,20 @@ const SetExplore = ({_safety},place)=>{
 
 const JobTypes = ["Access", "Acquire", "Construct", "Decypher", "Deliver", "Defend", "Eliminate", "Explore", "Fight Off", "Negotiate", "Patrol", "Protect", "Search", "Secure"]
 
-const RandomFaction = (RNG=chance)=>RNG.pickone(RNG.bool() ? Details.factions : Details.outsiders)
-
-const Jobs = (region,place)=>{
+const Jobs = (region,where)=>{
   let RNG = chance
 
-  let who = ["outpost", "settlement", "city"].includes(place.what) ? RandomFaction() : place.who
+  let who = ["outpost", "settlement", "city"].includes(where) ? Encounters.Faction(RNG) : region.lookup("faction")[0].who
   let what = RNG.pickone(JobTypes)
 
   //get the target, don't use the same faction 
-  let against = RandomFaction()
+  let against = Encounters.Faction(RNG)
   while (against == who) {
-    against = RandomFaction()
+    against = Encounters.Faction(RNG)
   }
 
   let _where = RNG.weighted(["within", "near", "anywhere"], [6, 3, 1])
-  let where = _where == "within" ? RNG.pickone(region.sites) : (_where == "near" ? "" : "anywhere") + RNG.integer()
+  // let where = _where == "within" ? RNG.pickone(region.sites) : (_where == "near" ? "" : "anywhere") + RNG.integer()
 
   let short = who + " looking to " + what + " against " + against
 
@@ -185,7 +185,7 @@ const Jobs = (region,place)=>{
     who,
     what,
     against,
-    where,
+    where : null,
     short
   }
 }
