@@ -49,17 +49,15 @@ class Area {
     this._parent = opts.parent || ""
 
     //establish id && name 
-    this.id = opts.id ? opts.id : opts.name ? [opts.name,chance.natural()].join(".") : chance.natural().toString(16)
+    this.id = opts.id ? opts.id : chance.hash()
     //has classes just like an html element 
     this.class = ["area"]
 
     this.terrain = []
+    this.children = []
 
     
     this.i = opts.i || 0
-
-    //child areas 
-    this._children = []
 
     //save to app 
     this.app.areas[this.id] = this 
@@ -68,10 +66,6 @@ class Area {
   //parent and children 
   get parent () {
     return this._parent == "" ? null : this.app.areas[this._parent]
-  }
-
-  get children () {
-    return this._children.map(id => this.app.areas[id])
   }
 
   get name() {

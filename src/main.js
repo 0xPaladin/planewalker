@@ -7,15 +7,22 @@
   https://localforage.github.io/localForage/
 */
 import "../lib/localforage.min.js"
-var DB = localforage.createInstance({
-  name: "Regions"
+const DB = {}
+DB.Games = localforage.createInstance({
+  name: "Games"
+});
+DB.Areas = localforage.createInstance({
+  name: "Areas"
+});
+DB.Factions = localforage.createInstance({
+  name: "Factions"
 });
 
 /*
   Chance RNG
 */
 import "../lib/chance.min.js"
-
+import {BuildArray} from "./random.js"
 /*
   SVG
   https://svgjs.dev/docs/3.0/getting-started/
@@ -33,10 +40,8 @@ const html = htm.bind(h);
 /*
   App Sub UI
 */
-import*as Explorers from './explorers.js';
 import*as UI from './UI.js';
-import*as POI from "./poi.js"
-import {Region} from './region.js';
+import * as Gen from './generate.js';
 
 /*
   Declare the main App 
@@ -46,143 +51,219 @@ class App extends Component {
   constructor() {
     super();
     this.state = {
-      view: "Main",
-      showDialog: "",
-      planes: [],
-      plane: "Outlands",
-      toGenerate: "",
+      show: "Main",
+      reveal : [],
+      dialog: "",
       iframe: null,
-      area: "",
-      hexId: null,
       generated: [],
-      explorers: []
+      toGenerate : "",
     };
 
     //use in other views 
     this.html = html
+    //keep generator functions 
+    this.gen = Gen
     //keep poi 
-    this.poi = POI
-    //global store for generated areas 
+    this.poi = Gen.POI
+    //global store for generated areas / factions 
     this.areas = {}
+    this.factions = {}
+    this.characters = {}
   }
 
   // Lifecycle: Called whenever our component is created
   async componentDidMount() {
     //align background symbols
     let box = SVG("#plane-symbols").bbox()
-    SVG("#background").attr('viewBox', [box.x, box.y, box.width, box.height].join(" "))
+    SVG("#background").attr('viewBox', [box.x, box.y, box.width, box.height].join(" "))  
+    
+    let lastSave = localStorage.getItem("lastSave")
+    if(!lastSave) {
+      lastSave = chance.hash()
+      localStorage.setItem("lastSave",lastSave)
+    }
+    let RNG = chance
 
-    //select random region 
-    await this.setState({
-      planes: Object.keys(POI.Regions),
-      plane: "Outlands",
-      toGenerate: chance.pickone(Object.keys(POI.Regions.Outlands))
+    //load all planes 
+    Object.entries(Gen.POI.OuterPlanes).forEach(([id,p]) => new Gen.Plane(this,Object.assign({id:RNG.hash()},p)))
+    Object.entries(Gen.POI.InnerPlanes).forEach(([id,p]) => new Gen.Plane(this,Object.assign({id:RNG.hash()},p)))
+
+    const MakeRegion = (parent,layer) => new Gen.Region(this,{parent,layer,id:RNG.hash()})
+
+    //random regions for fun and exploration 
+    Object.values(Gen.POI.OuterPlanes).forEach(p => MakeRegion(p.name,p.layers ? p.layers[0] : p.name))
+    Object.values(Gen.POI.InnerPlanes).forEach(p => MakeRegion(p.name,p.name))
+    BuildArray(12, () => {
+      let p = chance.pickone(Object.values(Gen.POI.OuterPlanes))
+      MakeRegion(p.name,p.layers ? chance.pickone(p.layers) : p.name)
     })
-    this.generate()
+    BuildArray(12, () => {
+      let p = chance.pickone(Object.values(Gen.POI.InnerPlanes))
+      MakeRegion(p.name,p.name)
+    })
+
+    //randomly create 3 pantheons
+    BuildArray(3,() => new Gen.Pantheon(this,{id:RNG.hash()}))
+
+    //randomly create 5 factions 
+    BuildArray(5,() => new Gen.Faction(this,{id:RNG.hash()}))
+
+    //load factions 
+    let factions = Object.entries(Gen.Factions).reduce((all,f,i)=>{
+      let what = f[1].class == "Sigil" ? 0 : 1
+      all[what].push(f) 
+      return all 
+    },[[],[]])
+    
+    //randomly pick 5 
+    factions.forEach(F => {
+      RNG.shuffle(F).slice(0,5).forEach(([name,f])=> {
+        let opts = Object.assign({template:name,name,id:RNG.hash()})
+        new Gen.Faction(this,opts)
+      })
+    })
+
+    //random characters 
+    BuildArray(5,() => new Gen.Explorer(this))
+
+    //set all portals 
+    this.regions.forEach(r => r.portal = chance)
+
     //load saved 
-    this.loadSaved()
+    this.pullSaved() 
+    
+    console.log(this.areas,this.factions,this.characters)
   }
 
   // Lifecycle: Called just before our component will be destroyed
   componentWillUnmount() {}
 
-  async loadSaved() {
-    let {planes} = this.state
-    let Saved = POI.Regions.Saved = {}
+  save () {
+    let lastSave = localStorage.getItem("lastSave")
+    
+    let regions = this.regions.map(r => {
+      r.save()
+      return r.id 
+    })
+    let data = {regions}
 
-    //iterate, check number and update state 
-    DB.iterate((r,id)=>{
-      Saved[id] = r
-    }).then(()=>{
-      if(Object.keys(Saved).length == 0) {
-        delete POI.Regions.Saved
-      }
-      else {
-        planes = Object.keys(POI.Regions)
-        this.setState({planes})
-      }
+    DB.Games.setItem(lastSave,data)
+  }
+
+  async pullSaved() {
+    //iterate
+    await DB.Areas.iterate((o,id)=>{
+      let opts = Object.assign({id},o)
+      new Gen.Region(this,opts)
+    }
+    )
+    await DB.Factions.iterate((o,id)=>{
+      let opts = Object.assign({id},o)
     }
     )
   }
 
-  //show the dialog calling which dialog to show 
-  showDialog(what) {
-    this.setState({
-      showDialog: what
-    })
+  //main function for updating state 
+  updateState(what, val) {
+    let s = {}
+    s[what] = val
+    this.setState(s)
   }
 
-  setView(view) {
-    this.setState({
-      view
-    })
+  //main functions for setting view - usine set/get of show 
 
-    //SVG('#map').addClass('hidden')
+  refresh () {
+    this.show = this.state.show
   }
 
-  generate(poi=this.state.toGenerate) {
-    let plane = this.state.plane
+  set show (what) {
+    this.updateState("show",what)
+  }
 
-    let opts = POI.Regions[plane][poi]
+  get show () {
+    let [what,id] = this.state.show.split(".")
+    return UI[what] ? UI[what](this) : this[what][id].UI ? this[what][id].UI() : ""
+  }
+
+  get dialog () {
+    let what = this.state.dialog
+    return what == "" ? "" : UI[what](this)
+  }
+
+  //getter functions 
+
+  get planes() {
+    return Object.values(this.areas).filter(p=>p.class[0] == "plane")
+  }
+
+  get regions() {
+    return Object.values(this.areas).filter(p=>p.class[0] == "region")
+  }
+
+  get pantheons() {
+    return Object.values(this.factions).filter(p=>p.class[0] == "pantheon")
+  }
+  
+  get activeFactions() {
+    return Object.values(this.factions).filter(f=>f.class[0] == "faction")
+  }
+
+  async loadSaved(what) {
+    let {toGenerate} = this.state
+
+    let _what = what == "Region" ? "Regions" : what == "Pantheon" ? "Factions" : ""
+    let opts = await DB[_what].getItem(toGenerate)
+    opts.id = toGenerate
+
+    //create object 
+    let O = new Gen[what](this,opts)
+
+    if (what == "Region") {
+      this.setArea(R.id)
+    }
+
+    this.setView(O.UI)
+  }
+
+  addObject(what) {
+    if (what == "Pantheon") {
+      new Pantheon(this)
+      this.setView("Factions")
+      console.log(this.factions)
+    }
+  }
+
+  generate(parent=this.state.plane) {
+    let {terrainTypes, toGenerate} = this.state
+    let[pid,l] = parent.split(".")
+
+    let opts = {
+      parent,
+      terrain: toGenerate == "random" ? chance.pickone(terrainTypes) : toGenerate,
+    }
+
     let R = new Region(this,opts)
     this.setArea(R.id)
   }
 
-  get area() {
-    return this.areas[this.state.area]
-  }
-
-  async setArea(id) {
-    let A = this.areas[id]
-
-    //update state 
-    await this.setState({
-      area: id,
-      view: A.UI[0],
-      iframe: A.iframe || null,
-      generated: []
-    })
-    //redraw  
-    A.display()
-
-    console.log(A)
-  }
-
-  newExplorer() {
-    let E = new Explorers.Explorer()
-    console.log(E)
-  }
-
   //main page render 
-  render(props, {view, planes, plane, toGenerate}) {
-    //get view as array 
-    let _view = view.split(".")[0]
+  render(props, {show}) {
+    let view = show.split(".")[0]
 
-    const showHome = ()=>html`<a class="ml2 f5 link dim ba bw1 pa1 dib black" href="#" onClick=${()=>this.setView("Main")}>Outlands</a>`
-
+    //final layout 
     return html`
     <div class="relative flex flex-wrap items-center justify-between ph3 z-2">
       <div>
-        <h1 class="mv2"><a class="link underline-hover black" href=".">Planewalker</a></h1>
+        <h1 class="pointer underline-hover mv2" onClick=${()=>this.show = "Main"}>Planewalker</h1>
       </div>
-      <div class="flex items-center">
-        <select class="pa1" value=${plane} onChange=${(e)=>this.setState({
-      plane: e.target.value
-    })}>
-          ${planes.map(p=>html`<option value=${p}>${p}</option>`)}
-        </select>
-        <select class="pa1" value=${toGenerate} onChange=${(e)=>this.setState({
-      toGenerate: e.target.value
-    })}>
-          ${Object.entries(POI.Regions[plane]).map(([id,p])=>html`<option value=${id}>${p.name}</option>`)}
-        </select>
-        <a class="f5 link dim ba bw1 pa1 dib black" href="#" onClick=${()=>this.generate()}>Generate</a>
+      <div>
+        ${!["Factions","Planes","Pantheons","Explorers","areas","factions"].includes(view) ? "" : html`<div class="pointer f5 link dim ba bw1 pa1 dib black mh1" onClick=${()=>this.show = "Main"}>Home</div>`}
       </div>
     </div>
-    <div class="absolute z-1 w-100 ma2 pa2">
-      ${UI[_view](this)}
+    <div class="absolute z-1 w-100 pa2">
+      ${this.show}
     </div>
-    ${UI.Dialog(this)}
+    ${this.dialog}
     `
   }
 }

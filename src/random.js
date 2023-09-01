@@ -4,14 +4,16 @@ const RandBetween = (min,max,RNG=chance)=>RNG.integer({
   max
 })
 const SumDice = (dice,RNG=chance)=>{
-  let [d,b = 0] = dice.split("+")
+  let[d,b=0] = dice.split("+")
   return Number(b) + RNG.rpg(d, {
     sum: true
   })
 }
-const Likely = (p=50,RNG=chance) => RNG.bool({likelihood:p})
-const ZeroOne = (RNG=chance) => RNG.bool() ? 1: 0 
-const Difficulty = (RNG=chance) => RNG.weighted([0,1,2,3,4,5],[30,30,20,13,5,2])
+const Likely = (p=50,RNG=chance)=>RNG.bool({
+  likelihood: p
+})
+const ZeroOne = (RNG=chance)=>RNG.bool() ? 1 : 0
+const Difficulty = (RNG=chance)=>RNG.weighted([0, 1, 2, 3, 4, 5], [30, 30, 20, 13, 5, 2])
 
 const Hash = (str)=>{
   let hash = 0;
@@ -24,4 +26,26 @@ const Hash = (str)=>{
   return hash.toString(16);
 }
 
-export {RandBetween,SumDice,Likely,Difficulty,ZeroOne,Hash,chance}
+const SpliceOrPush = (arr,what)=>{
+  let i = arr.indexOf(what)
+  if (i > -1) {
+    arr.splice(i, 1)
+  } else {
+    arr.push(what)
+  }
+  return arr
+}
+
+const BuildArray = (n,f)=>Array.from({
+  length: n
+}, f)
+
+const WeightedString = (str,RNG=chance)=>{
+  let[w,p] = str.split("/").map(w=>w.split(","))
+  if (w.length != p.length) {
+    console.log(str)
+  }
+  return RNG.weighted(w, p.map(Number))
+}
+
+export {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray,SpliceOrPush, WeightedString, chance}

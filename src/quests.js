@@ -1,9 +1,9 @@
-import {RandBetween, SumDice, Likely, Difficulty, chance} from "./random.js"
+import {RandBetween, SumDice, Likely, Difficulty, WeightedString, chance} from "./random.js"
 /*
   Contains setting data : elements, magic types, etc 
 */
 import*as Details from "./data.js"
-import {Encounters, NPCs} from "./encounters.js"
+import {Faction, NPCs} from "./encounters.js"
 
 /*
   E, Explore: Hunt, Move, Muscle 
@@ -72,6 +72,36 @@ import {Encounters, NPCs} from "./encounters.js"
   Mo,Br,Wp,Sp,Ar,It,Al,Rs,Tk 
 */
 
+const ExploreRewards = {
+  "wilderness" : "Trinket,item,Resource,Essence/5,2,2,1",
+  "landmark" : "Trinket,item,Resource,Essence/3,3,2,2",
+  "hazard" : "Trinket,Resource,Essence,Gear,Implements/3,3,1,2,1",
+  "resource" : "Resource,Essence,Trinket,Tools/5,1,2,2",
+  "encounter" : "Trinket,Materials,Essence,martial,Implements/2,3,1,3,1",
+  "dungeon" : "Trinket,Gold,Essence,Power,item/3,3,1,1,2",
+  "settlement" : "Trinket,Materials,Resource,item,Ally/3,2,1,2,2",
+  "faction" : "Trinket,Gold,Documents,Ally/2,1,4,3",
+  "martial" : "Weapon,Armor/1,1",
+  "equipment" : "Documents,Gear,Implements,Supplies,Tools/1,2,1,2,2",
+  "item" : "martial,equipment,Magical,Power/4,4,1,1",
+}
+
+//Rewars based upon what action was done 
+const Rewards = (where,diff,RNG = chance) => {
+  let what = WeightedString(ExploreRewards[where],RNG)
+  //loop to get final result 
+  while(ExploreRewards[what]) {
+    what = WeightedString(ExploreRewards[what],RNG)
+  }
+
+  //get durability 
+  let d = "1d"+WeightedString("4,6,8,10,12/2,3,3,1,1")
+  //get value 
+  let v = diff > 0 ? RNG.rpg(diff+"d6").reduce((sum,r) => sum+([0,1,1,1,1,2][r]),0) : 0
+
+  return [what,v,d]
+}
+
 //Set Explore values on places - can be called to reset 
 const SetExplore = (where,safety,diff)=>{
   let RNG = chance
@@ -121,6 +151,7 @@ const SetExplore = (where,safety,diff)=>{
   const challenges = ['Cypher', 'Monster', 'Mechanism', 'People', 'Obstacle', 'Wilderness']
   const types = {
     "creature": [0, 5, 0, 1, 2, 2],
+    "encounter": [0, 5, 0, 1, 2, 2],
     "dungeon": [1, 2, 2, 1, 2, 2],
     "area": [0, 2, 0, 1, 2, 5],
     "wilderness": [0, 2, 0, 1, 2, 5],
@@ -136,12 +167,14 @@ const SetExplore = (where,safety,diff)=>{
 
   // assign challenge group, difficulty, action 
   let data = ExArray(types[where])
-  let short = data[0] + " [" + data[1] + "] " + data[3]
+  let reward = Rewards(where,diff)
+  let short = [data[0],"["+data[1]+"]",data[3]+";","Find:",reward[0]].join(" ")
 
   return {
     data,
     where,
-    short
+    short,
+    reward
   }
 }
 
@@ -164,22 +197,18 @@ const SetExplore = (where,safety,diff)=>{
 
 const JobTypes = ["Access", "Acquire", "Construct", "Decypher", "Deliver", "Defend", "Eliminate", "Explore", "Fight Off", "Negotiate", "Patrol", "Protect", "Search", "Secure"]
 
-const Jobs = (region,where)=>{
+const Jobs = (who = null,where)=>{
   let RNG = chance
 
-  let who = ["outpost", "settlement", "city"].includes(where) ? Encounters.Faction(RNG) : region.lookup("faction")[0].who
+  who = who != null ? who : where.lookup("faction").length > 0 && Likely(70,RNG) ? RNG.pickone(where.lookup("faction")) : RNG.pickone(where.app.activeFactions)
   let what = RNG.pickone(JobTypes)
 
-  //get the target, don't use the same faction 
-  let against = Encounters.Faction(RNG)
-  while (against == who) {
-    against = Encounters.Faction(RNG)
-  }
+  //get the target, use relations 
+  let against = who.relations.enemies.length > 0  && Likely(70,RNG) ? RNG.pickone(who.relations.enemies) : RNG.pickone(who.relations.neutral)
 
-  let _where = RNG.weighted(["within", "near", "anywhere"], [6, 3, 1])
-  // let where = _where == "within" ? RNG.pickone(region.sites) : (_where == "near" ? "" : "anywhere") + RNG.integer()
+  let _where = RNG.weighted(["within", "near", "anywhere"], [5, 4, 1])
 
-  let short = who + " looking to " + what + " against " + against
+  let short = who.name + " looking to " + what + " against " + against.name
 
   return {
     who,

@@ -6,8 +6,13 @@ h1, h2, h3 {
   font-family: "MedievalSharp", sans-serif;
 }
 
+.m-auto {
+  margin: auto;
+}
+
 .hidden {
   visibility: hidden;
+  height: 0;
 }
 
 #background {

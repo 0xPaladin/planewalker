@@ -6,13 +6,7 @@ import*as Details from "./data.js"
 /*
   Useful Random Functions 
 */
-import {RandBetween, SumDice, Likely, Hash, Difficulty, chance} from "./random.js"
-
-//array from 
-const BuildArray = (n,f)=>Array.from({
-  length: n
-}, f)
-
+import {RandBetween, SumDice, Likely, Hash, Difficulty,BuildArray, chance} from "./random.js"
 
 /*
   Data for generation 
@@ -182,18 +176,7 @@ class Site extends Area {
     const na = SumDice(Areas[scale], RNG)
 
     //areas with contnets
-    this._children = BuildArray(na, (v,i)=>{
-      let _opts = {
-        parent : this.id,
-        id : [this.id,"a",i].join("."),
-        i 
-      }
-      
-      let A = new Area(app,_opts)
-      Object.assign(A,Random.area(RNG, type))
-
-      return A.id
-    })
+    this.children = BuildArray(na, (v,i)=> Object.assign(Random.area(RNG, type),{i,parent: this}))
 
     //set hex layout
     this.setHex()
@@ -216,4 +199,4 @@ class Site extends Area {
   }
 }
 
-export {Site}
+export {Site, Area}

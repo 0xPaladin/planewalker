@@ -1,17 +1,12 @@
 var DB = localforage.createInstance({
-  name: "Explorers"
+  name: "Characters"
 });
 
-import {RandBetween, SumDice, Likely, chance} from "./random.js"
-
-const People = (RNG=chance)=>{
-  let common = ["Human", "Elf", "Dwarf", "Gnome", "Halfling", "Githzerai", "Aasimar", "Tiefling"]
-  let uncommon = ["Aarakocra", "Bugbear", "Centaur", "Githyanki", "Gnoll", "Goblin", "Grippli", "Hobgoblin", "Kobold", "Lizardfolk", "Minotaur", "Myconid", "Orc", "Sahuagin", "Yeti"]
-
-  return RNG.pickone(Likely(60, RNG) ? common : uncommon)
-}
+import {RandBetween, SumDice, Likely,BuildArray, chance} from "./random.js"
+import*as Names from "./names.js"
 
 const Abilities = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"]
+const ShortAbilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
 const Skills = {
   "Strength": [],
   "Dexterity": [],
@@ -21,35 +16,63 @@ const Skills = {
   "Charisma": []
 }
 
+const Adventurers = {
+  "Arcane": "Wizard,Sorcerer,Warlock/4,2,1",
+  "Devout": "Cleric,Druid,Champion/4,2,2",
+  "Skilled": "Rogue,Artificer,Bard/4,2,2",
+  "Warrior": "Fighter,Ranger,Barbarian,Monk/4,3,2,2"
+}
+
+const ClassAbility = {
+  "Wizard": ["Intelligence","Constitution"],
+  "Sorcerer": ["Charisma","Intelligence"],
+  "Warlock": ["Wisdom","Constitution"],
+  "Cleric": ["Wisdom","Charisma"],
+  "Druid": ["Wisdom","Constitution"],
+  "Champion": ["Strength","Wisdom"],
+  "Rogue": ["Dexterity","Intelligence"],
+  "Artificer": ["Intelligence","Constitution"],
+  "Bard": ["Charisma","Dexterity"],
+  "Fighter": ["Strength","Dexterity"],
+  "Barbarian": ["Constitution","Strength"],
+  "Monk": ["Dexterity","Strength"],
+  "Ranger" : ["Dexterity","Constitution"]
+}
+
 class Explorer {
-  constructor(id=chance.hash()) {
+  constructor(app, opts={}) {
+    let {id=chance.hash()} = opts
+
+    this.app = app
     this.id = id
+    this.opts = opts
+
     let RNG = new Chance(this.id)
 
-    this.people = People(RNG)
+    this.level = RNG.pickone([1, 2])
+
+    //always generate but overwrite 
+    this.people = app.gen.Encounters.ByRarity({
+      what: "PCs"
+    }, RNG)
+    this.name = Names.Diety(RNG)
+    this.classes = app.gen.Encounters.NPCs.adventurer(RNG)
+
+    let overwrite = ["people", "name", "level"]
+    overwrite.forEach(k=>this[k] = opts[k] ? opts[k] : this[k])
 
     //generate abilities 
-    let abilities = Object.fromEntries(Abilities.map(a=>[a, [0, 0]]))
+    let av = BuildArray(7,()=>SumDice("3d6",RNG)).sort((a,b)=> b-a)
     //shuffle abilities to pick core and max first
-    let ca = RNG.shuffle(Abilities)
-
-    //pick base ability scores 
-    abilities[ca[0]] = [4, 4]
-    let ap = 5
-    for(let i = 1; i < ca.length; i++){
-      let n = RNG.d4()
-      n = n < ap ? n : ap 
-      abilities[ca[i]][0] += n 
-
-      ap -= n
-      if(ap == 0)
-        break
-    }
-
-    //pick ability feats 
-    let af = 11
-
-    this.abilities = abilities
+    let ca = this.classes.length > 1 ? [ClassAbility[this.classes[0]][0],ClassAbility[this.classes[1]][0]] : ClassAbility[this.classes[0]].slice()
+    ca = RNG.shuffle(ca)
+    RNG.shuffle(Abilities).forEach(a => {
+      if(!ca.includes(a)){
+        ca.push(a)
+      }
+    })
+      
+    this._abilities = Object.fromEntries(ca.map((a,i)=>[a,av[i]]))
 
     this.state = {
       jink: {},
@@ -57,7 +80,15 @@ class Explorer {
       items: [],
       location: ""
     }
+
+    //save to app 
+    this.app.characters[this.id] = this
   }
+
+  get abilities () {
+    return Abilities.map((a,i) => [ShortAbilities[i],a,this._abilities[a]])
+  }
+  
   save() {
     DB.setItem(this.id, this.state)
   }
