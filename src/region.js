@@ -713,12 +713,13 @@ class Region extends Area {
     let str = encounters[what]
 
     let opts = Object.assign({
+      id : o.id || RNG.seed, 
       rarity,
       threat,
       what,
       str
     })
-    let res = threat != null ? Encounters.ByThreat(RNG, opts) : Encounters.ByRarity(opts, RNG)
+    let res = threat != null ? Encounters.ByThreat(opts) : Encounters.ByRarity(opts)
     //set basic result
     return ["Encounter", res]
   }

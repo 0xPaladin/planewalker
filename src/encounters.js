@@ -81,10 +81,11 @@ const AlternateTitles = {
 }
 
 const Adventurers = {
-  "Arcane" : "Wizard,Artificer/4,2",
-  "Devout" : "Cleric,Monk/4,2",
-  "Skilled" : "Rogue,Bard/4,2",
-  "Warrior" : "Fighter,Ranger,Barbarian/4,3,2"
+  "Arcane" : "Wizard/1",
+  "Devout" : "Cleric/1",
+  "Rogue" : "Rogue,Bard/4,2",
+  "Skilled" : "Artificer/1",
+  "Warrior" : "Fighter,Ranger,Barbarian,Monk/5,4,2,2"
 }
 
 const NPCs = {
@@ -92,7 +93,7 @@ const NPCs = {
     return WeightedString("child,youth,adult,old,elderly/1,2,4,2,1",RNG)
   },
   adventurer (RNG = chance, base) {
-    let what = RNG.shuffle(["Arcane","Devout","Skilled","Warrior"]).slice(0,RandBetween(1,2,RNG))
+    let what = RNG.shuffle(["Arcane","Devout","Rogue","Skilled","Warrior"]).slice(0,RandBetween(1,2,RNG))
     if(base && !what.includes(base)) {
       what[0] = base 
     }
@@ -208,12 +209,16 @@ const Threat = {
 const Split = (val,str)=>{
   let base = str.split("/")
   let max = base.reduce((m,s,i)=>s.length > 0 ? i : m, 0)
+  let min = base.reduce((m,s,i)=> s.length > 0 && m == -1 ? i : m, -1)
+
+  let i = val > max ? max : val < min ? min : val 
 
   return {
     val,
-    base: base[base[val] == undefined || base[val].length == 0 ? max : val].split(","),
+    base: base[i].split(","),
+    min, 
     max,
-    delta: val - max
+    delta: val > max ? val-max : val < min ? val-min : 0 
   }
 }
 
@@ -229,11 +234,11 @@ const Generators = {
       aew = RNG.weighted(['a', 'e', 'w'], [3, 6, 2])
 
     if (aew == 'a')
-      return RNG.pickone(RNG.pickone(airAnimals).split("/"))
+      return capitalize(RNG.pickone(RNG.pickone(airAnimals).split("/")))
     else if (aew == 'e')
-      return RNG.pickone(RNG.pickone(earthAnimals).split("/"))
+      return capitalize(RNG.pickone(RNG.pickone(earthAnimals).split("/")))
     else if (aew == 'w')
-      return RNG.pickone(RNG.pickone(waterAnimals).split("/"))
+      return capitalize(RNG.pickone(RNG.pickone(waterAnimals).split("/")))
   },
   _chimera(RNG=chance) {
     return [Generators._animal(RNG), Generators._animal(RNG)].join("/")
@@ -286,7 +291,7 @@ const Generators = {
     
     let _color = RNG.bool() ? ["White", "Black", "Green", "Blue", "Red"] : ["Brass", "Copper", "Bronze", "Silver", "Gold"]
     let color = RNG.weighted(_color, [2, 3, 3, 3, 1])
-    return ["Dragon",  [color,age.includes(what) ? "Dragon" : what].join(" "), []]
+    return ["Dragon",  [color,age.includes(what) ? "Dragon" : what].join(" "), [color,what,age.includes(what)]]
   },
   Fey(RNG=chance, o={}) {
     let {base, rarity, max, delta} = o
@@ -330,7 +335,7 @@ const Generators = {
   */
   Folk(RNG=chance,o={}) {
     let animal = Generators[RNG.pickone(o.base)](RNG)
-    let what = animal+"-folk"
+    let what = capitalize(animal)+"-folk"
     let tags = animal.split("/").reduce((aquatic,a)=> aquatic || IsAquatic.includes(a),false) ? ["aquatic"] : []
     
     return ["People",what,tags]
@@ -353,16 +358,19 @@ const Generators = {
   }
 }
 
-const Format = ([base,short,tags])=>{
+const Format = (id,opts,[base,short,tags])=>{
   if(!tags.includes("aquatic") && IsAquatic.includes(short)){
     tags.push("aquatic")
   }
   
   return {
+    id,
+    opts,
     base,
-    short,
+    _short : short,
     lair: Generators.Lair(base, short),
-    tags
+    tags,
+    get short () { return [this._short,this.adventurer ? this.adventurer.join("/") : ""].join(" ")} 
   }
 }
 
@@ -374,11 +382,11 @@ const StringGenerate = {
   },
   Celestial(RNG, where) {
     let what = WeightedString('Aasimon,Archon,Guardinal,Eladrin/1,2,2,2',RNG)
-    return ["Outsider", where[what]]
+    return ["Outsider", where[what],what]
   },
   Fiend(RNG, where) {
     let what = WeightedString("Baatezu,Gehreleth,Slaad,Tanar'ri,Yugoloth/4,1,4,4,4",RNG)
-    return ["Outsider", where[what]]
+    return ["Outsider", where[what],what]
   },
   Monster(RNG, where) {
     let what = WeightedString('Aberration,Construct,Dragon,Magical Beast,Ooze,Plant,Undead,Vermin/1,1,1,3,1,2,2,2',RNG)
@@ -407,23 +415,30 @@ const Faction = (RNG=chance,alignment="neutral")=>{
   return RNG.pickone(list)
 }
 
-const ByRarity = (o={},RNG=chance)=>{
-  let {rarity=RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]), str=null} = o
+const ByRarity = (o={})=>{
+  let id = o.id || chance.hash()
+  let RNG = new Chance(id)
+  let {rarity, str=null} = o
+  rarity = rarity === undefined || rarity === null ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : rarity
 
   //pick from list 
   let type = o.what != null ? o.what : WeightedString("Petitioner,Planar,Beast,Monster,Celestial,Fiend,Elemental/30,15,20,10,10,10,5",RNG)
 
   //pulls rarity string 
-  let[gen,_str] = o.str != null ? [type, o.str] : Rarity[type] ? [type, Rarity[type]] : StringGenerate[type](RNG, Rarity)
-  gen = Details.Outsiders.Outsiders.includes(gen) ? "Outsider" : gen 
+  let[gen,_str,_outsider] = o.str != null ? [type, o.str] : Rarity[type] ? [type, Rarity[type]] : StringGenerate[type](RNG, Rarity)
+  gen = Generators[gen] ? gen : Details.Outsiders.Outsiders.includes(gen) ? "Outsider" : gen 
+  type = _outsider ? _outsider : type 
 
-  let opts = Object.assign({type},Split(rarity, _str))
+  let opts = Object.assign({id,type},Split(rarity, _str))
   //Finish up using the unique genrators 
-  return Format(Generators[gen](RNG, opts))
+  return Format(id,opts,Generators[gen](RNG, opts))
 }
 
-const ByThreat = (RNG=chance,o={})=>{
-  let {threat=RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]), str=null} = o
+const ByThreat = (o={})=>{
+  let id = o.id || chance.hash()
+  let RNG = new Chance(id)
+  let {threat, str=null} = o
+  threat = threat === undefined || threat === null ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : threat
 
   //pick from list 
   let type = o.what != null ? o.what : WeightedString("Petitioner,Planar,Beast,Monster,Celestial,Fiend,Elemental/30,15,20,10,10,10,5",RNG)
@@ -432,9 +447,9 @@ const ByThreat = (RNG=chance,o={})=>{
   let[gen,_str] = o.str != null ? [type, o.str] : Threat[type] ? [type, Threat[type]] : StringGenerate[type](RNG, Threat)
   gen = Details.Outsiders.Outsiders.includes(gen) ? "Outsider" : gen 
 
-  let opts = Object.assign({threat,type},Split(threat, _str))
+  let opts = Object.assign({id,threat,type},Split(threat, _str))
   //Finish up using the unique genrators 
-  return Format(Generators[gen](RNG, opts))
+  return Format(id,opts,Generators[gen](RNG, opts))
 }
 
 

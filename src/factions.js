@@ -212,6 +212,7 @@ class Faction {
     //state that does not change 
     this._minions = []
     this._children = []
+    this._form = null 
     this.alignment = null 
 
     //check for template 
@@ -219,7 +220,7 @@ class Faction {
       this.class.push(this.template.class)
       this.alignment = this.template.alignment.join("/")
       //minions 
-      let m = this.template.class[0] == "Sigil" ? "PCs" : this.template.class[0] == "Outsider" ? opts.template : null 
+      let m = this.template.class == "Sigil" ? "PCs" : this.template.class == "Outsider" ? opts.template : null 
       if(m) {
         this._minions.push(m)
       }
@@ -247,6 +248,7 @@ class Faction {
     if(!opts.template && !opts.pantheon){
       this.alignment = RNG.pickone(this.front.alignment)
       this._minions = this.front.minions ? this.front.minions : [WeightedString(MinionList,RNG)]
+      this._form = [RNG.natural(),this._minions[0] || null]
     }  
 
     //set the current plot 
@@ -277,7 +279,7 @@ class Faction {
 
   get name() {
     let {opts, _template} = this
-    return opts.name ? opts.name : _template ? _template : this._name ? this._name : this.front
+    return opts.name ? opts.name : _template ? _template : this._name ? this._name : this._front
   }
 
   get template() {
@@ -307,6 +309,13 @@ class Faction {
 
   get claims () {
     return this.app.regions.filter(r => r.claims[this.id])
+  }
+
+  get form () {
+    let [id,what,_rarity=0] = this._form || [null,null,0] 
+    let rarity = "PCs,Folk,Aberration,Magical Beast,Vermin".includes(what) ? null : _rarity
+    
+    return this._form ? Encounters.ByRarity({id,what,rarity}) : null 
   }
 
   get leader () {
@@ -372,7 +381,7 @@ class Faction {
 
   modify(what, val) {
     if (what == "plot") {
-      this.state.plot[0] = [WeightedString(PLOTS[this._front.type]), 0, chance.pickone([4, 8, 12])]
+      this.state.plot[0] = [WeightedString(PLOTS[this.front.type]), 0, chance.pickone([4, 8, 12])]
     } else if (what == "plot+") {
       if (this.plot[1] == 0 && val == -1) {
         return
@@ -419,20 +428,30 @@ class Faction {
     get minions / forces 
   */
   minion(o={}) {
+    let E = Encounters
     let RNG = new Chance(o.id || chance.hash())
-    let threat= o.rank || RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5])
+    let threat= o.rank == undefined ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : o.rank
     
-    
-    let E = this.app.gen.Encounters
+    let arr = this._minions.slice() 
+    if(this.form){
+      arr.push(this.form.base == "Outsider" ? this.form.tags[0] : this.form.base)
+    }
+
     //pick the type of minion 
-    let what = this._minions.length > 0 ? RNG.pickone(this._minions) : null
-    let res = E.ByThreat(RNG, {
+    let what = arr.length == 0 ? null : RNG.pickone(arr)
+    let res = E.ByThreat({
+      id : o.id || RNG.seed, 
       what,
       threat 
     })
+
+    let form = this.form 
+    if(form && 'People,PCs,Folk,Giant,Aberration,Dragon,Magical Beast,Elemental'.includes(this._form[1])){
+      res = form  
+    }
+
     //get adventuer class 
-    res.adventuer = E.NPCs.adventurer(RNG)
-    res.short = [res.short, res.adventuer.join("/")].join(" ")
+    res.adventurer = threat > 0 ? E.NPCs.adventurer(RNG) : res.base == 'People' ? [E.NPCs.occupation(RNG,WeightedString("Diplomat,Engineer,Explorer,Rogue,Scholar,Soldier/1,1,2,4,1,4",RNG)).short] : null
 
     return res
   }

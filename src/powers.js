@@ -14,7 +14,7 @@ const Templates = 'Noun.Form,Adjective.Form,Adjective.Noun,Form.of.Noun,Form.of.
 const Challenges = ['Cypher', 'Fight', 'Mechanism', 'People', 'Obstacle', 'Wilderness']
 
 const Power = (id=chance.hash(),opts={})=>{
-    let RNG = new chance(id)
+    let RNG = new Chance(id)
 
     //get name form 
     let _n = WeightedString(Templates, RNG).split(".")
@@ -39,4 +39,4 @@ const Power = (id=chance.hash(),opts={})=>{
 
 export {Power}
 
-console.log(BuildArray(5, Power()))
+console.log(BuildArray(5, ()=>Power()))

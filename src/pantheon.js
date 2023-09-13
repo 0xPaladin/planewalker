@@ -15,7 +15,7 @@ import*as Encounters from "./encounters.js"
 import {Region} from './region.js';
 
 const ByDietyAlignment = {
-  "good": 'Misguided Good,Religious Organization,God,Choir of Angles,Construct of Law',
+  "good": 'Misguided Good,Religious Organization,God,Choir of Angels,Construct of Law',
   "neutral": 'Thieves Guild,Religious Organization,Cabal,God,Immortal Prince,Choir of Angels,Chosen One,Construct of Law',
   "evil": 'Thieves Guild,Cult,Religious Organization,Cabal,God,Immortal Prince,Elemental Lord,Force of Chaos,Construct of Law,Chosen One,Dragon,Lord of the Undead'
 }
@@ -61,7 +61,7 @@ class Diety extends Faction {
     this.gen = "Faction"
     this.class = ["diety"]
 
-    const {alignment, baseAlignment="neutral", minor=0, parent=null, pantheon} = opts
+    let {alignment, baseAlignment="neutral", minor=0, parent=null, pantheon} = opts
     this._pantheon = pantheon
     this._parent = parent
 
@@ -73,6 +73,12 @@ class Diety extends Faction {
     //update rank 
     this.state.rank = minor > 0 ? SumDice("1d5+5", RNG) : SumDice("1d3+2", RNG)
 
+    //body form
+    this._form = [RNG.natural(),WeightedString('PCs,Folk,Dragon,Celestial,Fiend,Elemental,Undead,Fey,Aberration,Magical Beast,Vermin/40,20,10,5,5,5,5,5,5,5,5',RNG),4]
+    this.formSpecial = null
+
+    //reassign alignment to make sense with form 
+    baseAlignment = this._form == "Celestial" ? "good" : ["Fiend","Undead"].includes(this._form) ? "evil" : baseAlignment
     //base alignment
     let _alignment = RNG.weighted(...Aligment[baseAlignment])
     let al = RNG.pickone(Details.alignment[_alignment])
@@ -87,12 +93,6 @@ class Diety extends Faction {
 
     //set the current plot 
     this.completePlot()
-    
-    //body form
-    const getForm = (what = null)=>Encounters.ByRarity({what}, RNG)
-    
-    this.form = getForm()
-    this.formSpecial = null
 
     //home region 
     let _all = app.planes.filter(p=>p.tags.includes(al)).map(_p => _p.children).flat()
@@ -106,7 +106,7 @@ class Diety extends Faction {
       this.pantheon.children.push(this)
       
       //update if provided 
-      this.formSpecial = this.pantheon.form.includes("Hybrid") ? getForm("Animal") : this.pantheon.form.includes("Elemental") ? RNG.pickone(RNG.pickone(Details.element).split("/")) : null
+      this.formSpecial = this.pantheon.form.includes("Hybrid") ? [RNG.natural(),"Animal"] : this.pantheon.form.includes("Elemental") ? RNG.pickone(RNG.pickone(Details.element).split("/")) : null
     }
 
     //mythos figures 
@@ -171,8 +171,9 @@ class Diety extends Faction {
       </div>
       <div class="flex justify-around ph2 mb1">${Object.entries(this.stats).map(([name,val]) => html`<div><b>${name}:</b> ${val}</div>`)}</div>
       ${detailDiv("Domains",this.domainsShort.join("/"))}
+      ${detailDiv("Form",this.form.short)}
       ${this.parent ? detailDiv("Parent",this.parent.name) : ""}
-      ${detailDiv("Impulse",this.impulse)}
+      ${detailDiv("Impulse",this.front.impulse)}
       ${this.diety ? detailDiv("Diety",this.diety.name) : ""}
       ${this.leader ? detailDiv("Leader",this.leader.short) : ""}
       <div class="ph2"><b>Plot:</b> ${this.plot[0]} [${this.plot.slice(1).join("/")}]</div>
