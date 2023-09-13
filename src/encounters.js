@@ -1,3 +1,8 @@
+// return string with 1st char capitalized
+function capitalize(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 import {RandBetween, SumDice, Likely, WeightedString, BuildArray, chance} from "./random.js"
 
 /*
@@ -9,27 +14,83 @@ import*as Details from "./data.js"
   NPC Data 
 */
 const Occupations = {
-  "Outsider": ['hermit/prophet', 'fugitive/outlaw/exile', 'fugitive/outlaw/exile', 'barbarian', 'barbarian', 'beggar/vagrant/refugee', 'beggar/vagrant/refugee', 'herder/hunter/trapper', 'herder/hunter/trapper', 'diplomat/envoy', 'rare humanoid', 'otherworldly/arcane'],
-  "Criminal": ['bandit/brigand/thug', 'bandit/brigand/thug', 'cutpurse/thief', 'cutpurse/thief', 'bodyguard/tough', 'bodyguard/tough', 'burglar', 'con artist/swindler', 'dealer/fence', 'racketeer', 'lieutenant', 'boss/kingpin'],
-  "Commoner": ['layabout/simpleton', 'beggar/urchin', 'beggar/urchin', 'child', 'child', 'housewife/husband', 'farmer/herder/hunter', 'farmer/herder/hunter', 'laborer/servant', 'driver/porter/guide', 'sailor/guard', 'apprentice/adventurer'],
-  "Tradesperson": ['musician/troubador', 'artist/actor/acrobat', 'cobbler/furrier/tailor', 'weaver/basketmaker', 'potter/carpenter', 'mason/baker/chandler', 'cooper/wheelwright', 'tanner/ropemaker', 'stablekeeper/herbalist', 'vintner/jeweler', 'inkeep/tavernkeep', 'smith/armorer'],
+  "Commoner" : ['Beggar','Farmer','Herder','Laborer','Servant','Driver','Porter','Guide'],
   "Merchant": ['raw materials/supplies', 'raw materials/supplies', 'general goods/outfitter', 'general goods/outfitter', 'grain/livestock', 'ale/wine/spirits', 'clothing/jewelry', 'weapons/armor', 'spices/tobacco', 'labor/slaves', 'books/scrolls', 'magic supplies/items'],
-  "Specialist": ['clerk/scribe', 'undertaker', 'perfumer', 'navigator/guide', 'spy/diplomat', 'cartographer', 'locksmith/tinker', 'architect/engineer', 'physician/apothecary', 'sage/scholar', 'alchemist/astrologer', 'inventor/wizard'],
-  "Religious": ['heretic/apostate', 'zealot', 'mendicant/pilgrim', 'mendicant/pilgrim', 'acolyte/novice', 'acolyte/novice', 'monk/nun/cultist', 'preacher/prophet', 'missionary', 'templar/protector', 'priest/cult leader', 'high priest'],
-  "Security": ['militia', 'militia', 'scout/warden', 'watch/patrol', 'watch/patrol', 'raw recruit', 'foot soldier', 'foot soldier', 'archer', 'officer/constable', 'cavalry/knight', 'hero/general'],
-  "Authority": ['courier/messenger', 'town crier', 'tax collector', 'clerk/administrator', 'clerk/administrator', 'armiger/gentry', 'armiger/gentry', 'magistrate/judge', 'guildmaster', 'lesser nobility', 'greater nobility', 'ruler/warlord'],
-  "Follower": ['Arcanist', 'Channeler', 'Opportunist', 'Healer', 'Cleanser', 'Purifier', 'Scout', 'Skirmisher', 'Opener', 'Defender', 'Deterrer', 'Agitator', 'Forager', 'Miner', 'Herbalist', 'Protector', 'Schemer', 'Chronomancer', 'Brute'],
-  "Companion": ['Bulwark', 'Controller', 'Executioner', 'Mender']
+  "Diplomat" : ["Envoy","Musician","Artist","Merchant"], 
+  "Engineer" : ["Smith","Tinker","Physician","Herbalist"], 
+  "Explorer" : ["Scout","Navigator","Hunter"],
+  "Tradesman" : ["Tailor","Wright","Baker","Jeweler"],
+  "Rogue" : ["Thug","Thief","Con Artist","Spy"],
+  "Scholar" : ["Scribe","Scholar","Acolyte","Arcanist"],
+  "Soldier" : ["Soldier","Archer","Bodyguard"],
+}
+
+const Skilled = {
+  //Diplomat 
+  "Envoy" : "Bond,Sway",
+  "Musician" : "Sway,Command", 
+  "Artist" : "Sway,Focus",
+  "Merchant" : "Sway,Finesse",
+  //Engineer
+  "Smith" : "Tinker,Focus",
+  "Tinker" : "Tinker,Study", 
+  "Physician" : "Tinker,Notice", 
+  "Herbalist" : "Tinker,Finesse", 
+  //Explorer
+  "Scout" : "Sneak,Notice", 
+  "Navigator" : "Move,Notice", 
+  "Hunter" : "Study,Shoot", 
+  //Tradesman 
+  "Tailor" : "Tinker,Finesse",  
+  "Wright" : "Tinker,Muscle", 
+  "Baker" : "Tinker,Study", 
+  "Jeweler" : "Tinker,Finesse", 
+  //Rogue
+  "Thug" : "Muscle,Sneak",
+  "Thief" : "Finesse,Sneak",  
+  "Con Artist" : "Sway,Finesse",
+  "Spy" : "Sway,Notice", 
+  //Scholar
+  "Scribe" : "Finesse,Study", 
+  "Scholar" : "Study,Focus", 
+  "Acolyte" : "Sway,Focus", 
+  "Arcanist" : "Study,Focus", 
+  //Soldier
+  "Soldier" : "Muscle,Command", 
+  "Archer" : "Shoot,Notice",//
+  "Bodyguard" : "Muscle,Move",
+}
+
+const AlternateTitles = {
+  "Musician" : "actor",
+  "Tinker" : "locksmith,architect,engineer,inventor",
+  "Physician" : "apothecary,alchemist",
+  "Herbalist" : "vinter,perfumer",
+  "Scout" : "warden",
+  "Navigator" : "cartographer,courier",
+  "Hunter" : "trapper",
+  "Tailor" : "cobbler,tailor,weaver",
+  "Wright" : "potter,carpenter,mason,wheelwright",
+  "Baker" : "baker,chandler",
+  "Thief" : "cutpurse,burglar",
+  "Scribe" : "clerk,administrator",
+  "Scholar" : "sage,historian",
+  "Acolyte" : "missionary,mendicant,preacher",
+  "Arcanist" : "channeler",
+  "Soldier" : "militia,recruit,foot soldier,knight"
 }
 
 const Adventurers = {
-  "Arcane" : "Wizard,Artificer,Sorcerer/4,2,2",
-  "Devout" : "Cleric,Druid,Champion/4,2,2",
-  "Skilled" : "Rogue,Monk,Bard/4,2,2",
+  "Arcane" : "Wizard,Artificer/4,2",
+  "Devout" : "Cleric,Monk/4,2",
+  "Skilled" : "Rogue,Bard/4,2",
   "Warrior" : "Fighter,Ranger,Barbarian/4,3,2"
 }
 
 const NPCs = {
+  age (RNG) {
+    return WeightedString("child,youth,adult,old,elderly/1,2,4,2,1",RNG)
+  },
   adventurer (RNG = chance, base) {
     let what = RNG.shuffle(["Arcane","Devout","Skilled","Warrior"]).slice(0,RandBetween(1,2,RNG))
     if(base && !what.includes(base)) {
@@ -39,25 +100,29 @@ const NPCs = {
     return what.map(b => WeightedString(Adventurers[b],RNG))
   } ,
   occupation(RNG=chance, type) {
-    type = type || RNG.weighted(Object.keys(Occupations), [1, 1, 3, 2, 1, 1, 1, 1, 1, 12, 1])
-    let o = RNG.pickone(RNG.pickone(Occupations[type]).split("/"))
-    let short = type == "Merchant" ? type + " of " + o : o
-    return [type, short]
+    let trade = WeightedString("Commoner,Diplomat,Engineer,Explorer,Tradesman,Rogue,Scholar,Soldier/30,5,5,10,15,15,5,15",RNG)
+    trade = type || trade
+    let o = RNG.pickone(Occupations[trade])
+    //find an alternate 
+    let alt = AlternateTitles[o] && Likely(50,RNG) ? capitalize(RNG.pickone(AlternateTitles[o].split(","))) : null 
+    //get short title 
+    let short = alt ? alt : o == "Merchant" ? [o,"of",RNG.pickone(Occupations.Merchant)].join(" ") : o 
+    //get skills 
+    let skills = Skilled[o] ? Skilled[o].split(", ") : null
+    //competence
+    let competence = RNG.weighted(["liability", "incompetent", "competent", "adept", "exceptional", "masterful"], [1, 2, 4, 3, 1, 1])
+    return {trade,o,alt,short,skills,competence}
   },
   common(RNG=chance, type) {
     let o = NPCs.occupation(RNG, type)
-    let p = Encounters.PC(RNG)
-
-    let competence = ["liability", "incompetent", "competent", "adept", "exceptional", "masterful"]
-    let competent = RNG.weighted(competence, [1, 2, 4, 3, 1, 1])
-
-    let short = p + " " + o[1]
+    let p = ByRarity({what:"PCs"},RNG)
+    let age = NPCs.age(RNG)
 
     return {
-      short,
+      get short () {return [this.people.short,this.occupation.short].join(" ")},
       people: p,
+      age,
       occupation: o,
-      competent
     }
   }
 }
@@ -68,9 +133,11 @@ const MC = {}
 //https://www.completecompendium.com/
 
 const airAnimals = ['pteranadon', 'condor', 'eagle/owl', 'hawk/falcon', 'crow/raven', 'heron/crane/stork', 'gull/waterbird', 'songbird/parrot', 'chicken/duck/goose', 'bee/hornet/wasp', 'locust/dragonfly/moth', 'gnat/mosquito/firefly']
-const earthAnimals = ['dinosaur/megafauna', 'elephant/mammoth', 'ox/rhinoceros', 'bear/ape/gorilla', 'deer/horse/camel', 'cat/lion/panther', 'dog/wolf/boar/pig', 'snake/lizard/armadillo', 'mouse/rat/weasel', 'ant/centipede/scorpion', 'snail/slug/worm', 'termite/tick/louse']
-const waterAnimals = ['whale/narwhal', 'squid/octopus', 'dolphin/shark', 'alligator/crocodile', 'turtle', 'shrimp/crab/lobster', 'fish', 'frog/toad', 'eel/snake', 'clam/oyster/snail', 'jelly/anemone', 'insect/barnacle']
+const earthAnimals = ['dinosaur/megafauna', 'elephant/mammoth', 'ox/rhinoceros', 'bear/ape/gorilla', 'deer/horse/camel', 'cat/lion/panther', 'dog/wolf/boar/pig', 'snake/lizard/armadillo', 'mouse/rat/weasel', 'ant/centipede/scorpion', 'snail/slug/worm', 'termite/tick/louse', 'alligator/crocodile', 'frog/toad']
+const waterAnimals = ['whale/narwhal', 'squid/octopus', 'dolphin/shark', 'turtle', 'shrimp/crab/lobster', 'fish', 'eel/snake', 'clam/oyster/snail', 'jelly/anemone', 'arthropod/barnacle']
 const oddities = ['many-heads/no-head', 'profuse sensory organs', 'many limbs/tentacles/feelers', 'shape changing', 'bright/garish/harsh', 'web/network', 'crystalline/glassy', 'gaseous/misty/illusory', 'volcanic/explosive', 'magnetic/repellant', 'multilevel/tiered', 'absurd/impossible']
+
+const IsAquatic = 'whale/narwhal/squid/octopus/dolphin/shark/turtle/shrimp/crab/lobster/fish/eel/clam/oyster/snail/jelly/anemone/arthropod/barnacle/Morkoth/Nereid/Marid/Water Genasi/Sahuagin/Sea Fey/Triton/Locathah/Merfolk'
 
 const Rarity = {
   //type 
@@ -87,7 +154,7 @@ const Rarity = {
   //Sub generators 
   'Genie': '//Jann,Dao/Djinni,Efreeti,Marid/',
   'Giant': '//Fire Giant,Stone Giant,Hill Giant/Cyclops,Ettin,Frost Giant,Cloud Giant,Storm Giant/',
-  'People': 'Human,Elf,Dwarf,Gnome,Halfling,Goblin,Kobold,Orc/Lizardfolk,Drow,Bugbear,Gnoll,Hobgoblin,Ogre,Troll/Aarakocra,Centaur,Dragon-kin,Grippli,Kenku,Myconid,Thri-kreen,Wemic,Harpy,Minotaur,Gargoyle/Doppelganger,Treant/',
+  'People': 'Human,Elf,Dwarf,Gnome,Halfling,Goblin,Kobold,Orc/Lizardfolk,Drow,Bugbear,Gnoll,Hobgoblin,Ogre,Troll/Aarakocra,Centaur,Dragon-kin,Grippli,Kenku,Myconid,Thri-kreen,Wemic,Harpy,Minotaur,Gargoyle,Locathah,Sahuagin,Sea Fey,Triton,Merfolk/Doppelganger,Treant/',
   'Folk': '_animal/_chimera///',
   'PCs': 'Human,Elf,Dwarf/Gnome,Halfling,Goblin,Kobold,Orc,Bugbear,Lizardfolk,Hobgoblin/Air Genasi,Earth Genasi,Fire Genasi,Water Genasi,Aasimar,Bariaur,Githzerai,Tiefling,Drow,Gnoll,Centaur,Dragon-kin//',
   //Outsiders 
@@ -202,7 +269,9 @@ const Generators = {
     const aew = RNG.weighted(['a', 'e', 'w', 'c'], [3, 6, 2, 1])
 
     let what = (aew == 'c' ? Generators._chimera(RNG) : Generators._animal(RNG, aew))
-    return ["Animal", what + " ["+size+"]",[]]
+    let tags = aew == "w" || waterAnimals.reduce((isAquatic,a)=> isAquatic || a.includes(what),false) ? ["aquatic"] : []
+    
+    return ["Animal", what + " ["+size+"]",tags]
   },
   Construct(RNG=chance, o={}) {
     let {base, rarity, max, delta} = o
@@ -260,8 +329,11 @@ const Generators = {
     Major generators 
   */
   Folk(RNG=chance,o={}) {
-    let what = Generators[RNG.pickone(o.base)](RNG)+"-folk"
-    return ["People",what,[]]
+    let animal = Generators[RNG.pickone(o.base)](RNG)
+    let what = animal+"-folk"
+    let tags = animal.split("/").reduce((aquatic,a)=> aquatic || IsAquatic.includes(a),false) ? ["aquatic"] : []
+    
+    return ["People",what,tags]
   },
   PCs(RNG=chance,o={}) {
     let {base, rarity, max, delta} = o
@@ -282,6 +354,10 @@ const Generators = {
 }
 
 const Format = ([base,short,tags])=>{
+  if(!tags.includes("aquatic") && IsAquatic.includes(short)){
+    tags.push("aquatic")
+  }
+  
   return {
     base,
     short,
@@ -311,6 +387,10 @@ const StringGenerate = {
   Planar(RNG=chance, where) {
     let what = WeightedString('People,Folk/90,10',RNG)
     return [what, where[what]]
+  },
+  Prime(RNG=chance, where) {
+    let what = WeightedString('People,Folk,Animal,Aberration,Dragon,Undead,Outsider/50,20,10,5,5,5,5',RNG)
+    return what == "Outsider" ? StringGenerate[RNG.pickone(["Celestial","Fiend"])](RNG,where) : [what, where[what]]
   },
   Petitioner(RNG=chance, where) {
     return StringGenerate.Planar(RNG, where)

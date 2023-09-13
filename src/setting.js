@@ -1,14 +1,13 @@
 const InnerPlanes = {
   "Ethereal": {
     "name": "Ethereal",
-    "addClass" : ["inner"],
+    "layers": ["Ethereal"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
     "portals": "Inner,Outlands/7,3",
-    "tags": ["NN"],
-    "specialTerrain" : {
-      "id" : "Ethereal",
-      "base" : "water/1",
+    "tags": ["NN","inner"],
+    "terrain" : {
+      "base" : "islands/1",
     },
     "PS" : {
       "base" : "archipelago,island/8,2",
@@ -17,14 +16,13 @@ const InnerPlanes = {
   },
   "Plane of Air": {
     "name": "Plane of Air",
-    "addClass" : ["inner"],
+    "layers": ["Plane of Air"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
     "portals": "Ethereal,Plane of Water,Plane of Fire,Plane of Earth,Outlands/3,2,2,1,2",
-    "tags": ["NN"],
-    "specialTerrain" : {
-      "id" : "Plane of Air",
-      "base" : "water/1",
+    "tags": ["NN","inner"],
+    "terrain" : {
+      "base" : "islands/1",
       "water" : ["Water Globe"],
       "swamp" : ["Dust Front"],
       "plains" : ["Clear Skies"],
@@ -40,14 +38,14 @@ const InnerPlanes = {
   },
   "Plane of Earth": {
     "name": "Plane of Earth",
-    "addClass" : ["inner"],
+    "layers": ["Plane of Earth"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
     "portals": "Ethereal,Plane of Water,Plane of Fire,Plane of Air,Outlands/3,2,2,1,2",
-    "tags": ["NN"],
-    "specialTerrain" : {
+    "tags": ["NN","inner"],
+    "terrain" : {
       "id" : "Plane of Earth",
-      "base" : "plains,mountains,hills,forest,desert,swamp/3,3,3,1,2,1",
+      "base" : "lake,barren,wetland,woodland,lowlands,highlands,standard/1,1,1,1,2,2,2",
       "water" : ["Encased Sea"],
       "swamp" : ["Soil, Clay, Mud, and Silt"],
       "plains" : ["Sedimentary Rock/Limestone and Sandstone"],
@@ -63,14 +61,13 @@ const InnerPlanes = {
   },
   "Plane of Fire": {
     "name": "Plane of Fire",
-    "addClass" : ["inner"],
+    "layers": ["Plane of Fire"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
     "portals": "Ethereal,Plane of Air,Plane of Earth,Plane of Water,Outlands/3,2,2,1,2",
-    "tags": ["NN"],
-    "specialTerrain" : {
-      "id" : "Plane of Fire",
-      "base" : "water/1",
+    "tags": ["NN","inner"],
+    "terrain" : {
+      "base" : "islands/1",
       "water" : ["Roiling Plasma"],
       "swamp" : ["Magma Field"],
       "plains" : ["Bassalt Flats"],
@@ -83,14 +80,13 @@ const InnerPlanes = {
   },
   "Plane of Water": {
     "name": "Plane of Water",
-    "addClass" : ["inner"],
+    "layers": ["Plane of Water"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
     "portals": "Ethereal,Plane of Air,Plane of Earth,Plane of Fire,Outlands/3,2,2,1,2",
-    "tags": ["NN"],
-    "specialTerrain" : {
-      "id" : "Plane of Water",
-      "base" : "water/1",
+    "tags": ["NN","inner"],
+    "terrain" : {
+      "base" : "islands/1",
       "water" : ["Open Water"],
       "swamp" : ["Silt Confluence"],
       "plains" : ["Open Water"],
@@ -109,26 +105,31 @@ const InnerPlanes = {
 const OuterPlanes = {
   "Outlands": {
     "name": "Outlands",
+    "layers": ["Outlands"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
     "portals": "Outer/1",
-    "tags": ["NN"],
+    "tags": ["NN","outer"],
     "encounters": {
       "base": "Rilmani,Celestial,Fiend,Modron,Elemental,Fey,Beast,Monster/30,5,5,2,5,3,30,20"
     }
+  },
+  "Astral Plane": {
+    "name": "Astral Plane",
+    "layers": ["Astral Plane"],
+    "alignment": ["neutral"],
+    "display": "PerilousShores",
+    "portals": "Outer/1",
+    "tags": ["NN","outer"],
   },
   //Planes of Law
   "Mount Celestia": {
     "name": "Mount Celestia",
     "layers": ["Lunia", "Mercuria", "Venya", "Solania", "Mertion", "Jovar", "Chronias"],
-    "terrain": [["mountains", "hills", "plains", "any"], [3, 2, 1, 1]],
     "alignment": ["lawful", "good"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["LG"],
-    "Lunia": {
-      "terrain": [["water", "mountains", "hills", "plains"], [2, 1, 1, 1]],
-    },
+    "tags": ["LG","outer"],
     "encounters": {
       "base": "Archon,Aasimon,Animal,Dragon/4,1,4,1"
     }
@@ -139,17 +140,18 @@ const OuterPlanes = {
     "alignment": ["lawful"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["LN", "LG"],
+    "tags": ["LN", "LG","outer"],
     "encounters": {
       "base": "Archon,Celestial,Elemental,Dragon,Animal/10,30,10,5,45"
     }
   },
   "Mechanus": {
     "name": "Mechanus",
+    "layers": ["Mechanus"],
     "alignment": ["lawful"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["LN"],
+    "tags": ["LN","outer"],
     "encounters": {
       "base": "Modron,Archon,Dragon,Construct,Elemental,Beast/30,5,5,15,10,35"
     }
@@ -160,7 +162,7 @@ const OuterPlanes = {
     "alignment": ["evil", "lawful"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["LE", "LN"],
+    "tags": ["LE", "LN","outer"],
     "encounters": {
       "base": "Fiend,Undead,Beast,Magical Beast/2,2,3,3"
     }
@@ -171,7 +173,7 @@ const OuterPlanes = {
     "alignment": ["evil", "lawful"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["LE"],
+    "tags": ["LE","outer"],
     "encounters": {
       "base": "Baatezu,Fiend,Dragon,Undead,Beast,Magical Beast,Plant/40,5,10,5,20,15,5"
     }
@@ -183,7 +185,7 @@ const OuterPlanes = {
     "alignment": ["good"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["CG"],
+    "tags": ["CG","outer"],
     "encounters": {
       "base": "Eladrin,Fey,Beast,Magical Beast,Plant/30,20,20,20,10"
     }
@@ -194,17 +196,18 @@ const OuterPlanes = {
     "alignment": ["good", "neutral"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["CG", "CN"],
+    "tags": ["CG", "CN","outer"],
     "encounters": {
       "base": "Eladrin,Giant,Fey,Beast,Magical Beast/1,1,1,1,1"
     }
   },
   "Limbo": {
     "name": "Limbo",
+    "layers": ["Limbo"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["CN"],
+    "tags": ["CN","outer"],
     "encounters": {
       "base": "Slaad,Tanar'ri,Elemental,Beast,Ooze/4,1,1,3,1"
     }
@@ -215,7 +218,7 @@ const OuterPlanes = {
     "alignment": ["evil"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["CN", "CE"],
+    "tags": ["CN", "CE","outer"],
     "encounters": {
       "base": "Fiend,Animal,Vermin,Ooze,Undead,Aberration/2,1,2,2,2,1"
     }
@@ -226,7 +229,7 @@ const OuterPlanes = {
     "alignment": ["chaotic", "evil"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["CE"],
+    "tags": ["CE","outer"],
     "encounters": {
       "base": "Tanar'ri,Fiend,Undead,Beast,Aberration/50,10,15,20,5"
     }
@@ -238,13 +241,7 @@ const OuterPlanes = {
     "alignment": ["good"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["NG"],
-    "Belierin": {
-      "terrain": [["desert", "river"], [3, 1]],
-    },
-    "Thalasia": {
-      "terrain": [["water"], [1]],
-    },
+    "tags": ["NG","outer"],
     "encounters": {
       "base": "Guardinal,Celestial,Animal,Dragon/4,1,4,1"
     }
@@ -255,7 +252,7 @@ const OuterPlanes = {
     "alignment": ["good"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["LG", "NG"],
+    "tags": ["LG", "NG","outer"],
     "encounters": {
       "base": "Celestial,Dragon,Animal/3,1,6"
     }
@@ -266,7 +263,7 @@ const OuterPlanes = {
     "alignment": ["good"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["NG", "CG"],
+    "tags": ["NG", "CG","outer"],
     "encounters": {
       "base": "Animal,Plant,Celestial,Fey,Elemental/5,2,1,1,1"
     }
@@ -277,7 +274,7 @@ const OuterPlanes = {
     "alignment": ["evil"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["NE", "CE"],
+    "tags": ["NE", "CE","outer"],
     "encounters": {
       "base": "Fiend,Undead,Giant,Aberration,Beast,Monster/2,1,2,1,2,2 "
     }
@@ -288,7 +285,7 @@ const OuterPlanes = {
     "alignment": ["evil"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["NE"],
+    "tags": ["NE","outer"],
     "encounters": {
       "base": "Yugoloth,Fiend,Undead,Giant,Beast,Monster/2,1,2,1,2,2"
     }
@@ -299,7 +296,7 @@ const OuterPlanes = {
     "alignment": ["evil"],
     "display": "PerilousShores",
     "portals": "Outlands/1",
-    "tags": ["LE", "NE"],
+    "tags": ["LE", "NE","outer"],
     "encounters": {
       "base": "Yugoloth,Fiend,Beast,Monster/4,2,2,2"
     }
@@ -586,19 +583,19 @@ const Factions = {
   "Archon": {
     'fronts': 'Misguided Good,Religious Organization,Choir of Angels,Construct of Law',
     "class" : "Outsider",
-    "alignment": ["good","lawful"],
+    "alignment": ["lawful/good"],
     "home" : "Mount Celestia"
   },
   "Eladrin": {
     'fronts': 'Misguided Good,Choir of Angels',
     "class" : "Outsider",
-    "alignment": ["good","chaotic"],
+    "alignment": ["chaotic/good"],
     "home" : "Arborea"
   },
   "Guardinal": {
     'fronts': 'Misguided Good,Corrupt Government,Choir of Angels',
     "class" : "Outsider",
-    "alignment": ["good"],
+    "alignment": ["neutral/good"],
     "home" : "Elysium"
   },
   "Fraternity of Order": {
@@ -614,13 +611,13 @@ const Factions = {
   "Baatezu": {
     'fronts': 'Cult,Religious Organization,Corrupt Government,Cabal,God,Choir of Angels,Construct of Law,Power-mad Wizard,Chosen One,Dark Portal,Plague of the Undead',
     "class" : "Outsider",
-    "alignment": ["lawful","evil"],
+    "alignment": ["lawful/evil"],
     "home" : "Baator"
   },
   "Modron": {
     'fronts': 'Corrupt Government,Choir of Angels,Construct of Law',
     "class" : "Outsider",
-    "alignment": ["lawful","neutral"],
+    "alignment": ["lawful/neutral"],
     "home" : "Mechanus"
   },
   "Free League": {
@@ -641,19 +638,19 @@ const Factions = {
   "Gehreleth": {
     'fronts': 'Thieves Guild,Cult,Cabal,Immortal Prince,Power-mad Wizard,Dark Portal,Chosen One',
     "class" : "Outsider",
-    "alignment": ["chaotic","evil"],
+    "alignment": ["chaotic/evil"],
     "home" : "Carceri"
   },
   "Slaad": {
     'fronts': 'Cult,Immortal Prince,Elemental Lord,Force of Chaos,Power-mad Wizard,Chosen One,Dragon,Wandering Barbarians,Dark Portal,Vermin',
     "class" : "Outsider",
-    "alignment": ["chaotic","neutral"],
+    "alignment": ["chaotic/neutral"],
     "home" : "Limbo"
   },
   "Tanar'ri": {
     'fronts': 'Cult,God,Immortal Prince,Force of Chaos,Power-mad Wizard,Chosen One,Dark Portal,Wandering Barbarians,Vermin',
     "class" : "Outsider",
-    "alignment": ["chaotic","evil"],
+    "alignment": ["chaotic/evil"],
     "home" : "Abyss"
   },
   "Bleak Cabal": {
@@ -674,7 +671,7 @@ const Factions = {
   "Yugoloth": {
     'fronts': 'Thieves Guild,Cult,Immortal Prince,Power-mad Wizard,Chosen One,Dark Portal,Vermin',
     "class" : "Outsider",
-    "alignment": ["evil"],
+    "alignment": ["neutral/evil"],
     "home" : "Gray Waste"
   },
   "Athar": {

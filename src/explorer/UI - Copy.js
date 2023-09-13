@@ -16,6 +16,7 @@ const Main = (app)=>{
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Planes"}>Explore the Planes</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Factions"}>Factions</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Pantheons"}>Pantheons</div>
+    <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Explorers"}>Explorers</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.generate()}>Generate New</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.save()}>Save All</div>
     <div class="dropdown">
@@ -70,9 +71,23 @@ const Planes = (app)=>{
   const {html, planes, primes, areas} = app
   const {reveal} = app.state
 
-  let terrains = ["random","islands","costal","lake","barren", "wetland", "woodland", "lowlands","highlands"]
-  let innerP = planes.filter(p => p.tags.includes("inner"))
-  let outerP = planes.filter(p => p.tags.includes("outer"))
+  let terrains = ["random", "waterside", "swamp", "desert", "plains", "forest", "hills", "mountains"]
+  let innerP = planes.filter(p => p.class && p.class[0] == "inner")
+  let outerP = planes.filter(p => !p.class)
+
+  const PrimeRegions = (p) => html`
+  <div class="ba br2 mv1 pa1">
+    <h2 class="mv1" onClick=${()=>app.updateState("reveal", SpliceOrPush(reveal,p.id))}><span class="pointer underline blue">${p.name}</span> [${p.land.length}]</h2>
+    <div class="ph2 ${reveal.includes(p.id) ? "" : "hidden"}">
+      <div>Water: ${p.water}%</div>
+      ${p.continents.map(c=>html`
+      <div class="bt mv1 pa1">
+        <h3 class="mv0">${c.name}</h3>
+        ${c.children.map(r=>html`<div class="link pointer dim underline-hover blue mh1" onClick=${()=>app.show = ["areas", r.id].join(".")}>${r.name}</div>`)}
+      </div>`)}
+    </div>
+  </div>
+  `
 
   const PlaneRegions = (p) => html`
   <div class="ba br2 mv1 pa1">
@@ -97,6 +112,7 @@ const Planes = (app)=>{
 
   return html`
   <div class="flex justify-center">
+    <div class="flex flex-column mw6 bg-white-70 db br1 mh1 pa1"><h2 class="ma0">Prime Worlds</h2>${primes.map(PrimeRegions)}</div>
     <div class="flex flex-column mw6 bg-white-70 db br1 mh1 pa1"><h2 class="ma0">Inner Planes</h2>${innerP.map(PlaneRegions)}</div>
     <div class="flex flex-column mw6 bg-white-70 db br1 mh1 pa1"><h2 class="ma0">Outer Planes</h2>${outerP.map(PlaneRegions)}</div>
   </div>
@@ -123,10 +139,44 @@ const Factions = (app)=>{
     app.refresh()
   }
 
+  //modify attribute/aspect of faction 
+  const modify = (f,what,val) => {
+    f.modify(what,val)
+    app.refresh()
+  }
+
   //lists of existing factions 
   const outsiders = activeFactions.filter(f=>f.hasClass("Outsider"))
   const sigil = activeFactions.filter(f=>f.hasClass("Sigil"))
   const created = activeFactions.filter(f=>f.class.length == 1)
+
+  const detailDiv = (title,what) => html`<div class="ph2"><b>${title}:</b> ${what}</div>`
+
+  //individual faction information 
+  const faction = (f)=>html`
+  <div class="bg-white-50 ba br2 mw6 ma1 pa1">
+    <div class="flex items-center justify-between">
+      <h3 class="ma1" onClick=${()=>console.log(f)}>${f.name} (${f.alignment}) [${f.rank}]</h3>
+      <div class="dropdown pointer">
+        <div class="underline-hover b white bg-light-blue br2 pa1 ml2">Options</div>
+        <div class="dropdown-content bg-white ba bw1 pa1">
+          <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>f.save()}>Save</div>
+          <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>modify(f,"rank",1)}>Increase Rank</div>
+          <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>modify(f,"rank",-1)}>Decrease Rank</div>
+          <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>modify(f,"plot")}>New Plot</div>
+          <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>modify(f,"plot+",1)}>Progress Plot</div>
+          <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>modify(f,"plot+",-1)}>Foil Plot</div>
+          <div class="link pointer dim underline-hover red ma1" onClick=${()=>modify(f,"delete")}>Delete</div>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-around ph2 mb1">${Object.entries(f.stats).map(([name,val]) => html`<div><b>${name}:</b> ${val}</div>`)}</div>
+    ${detailDiv("Impulse",f.impulse)}
+    ${f.diety ? detailDiv("Diety",f.diety.name) : ""}
+    <div class="ph2"><b>Home:</b> <span class="link pointer underline-hover blue" onClick=${()=>app.show = ["areas", f.home.id].join(".")}>${f.home.parent.name}, ${f.home.name}</span></div>
+    ${f.leader ? detailDiv("Leader",f.leader.short) : ""}
+    <div class="ph2"><b>Plot:</b> ${f.plot[0]} [${f.plot.slice(1).join("/")}]</div>
+  </div>`
 
   //final html
   return html`
@@ -141,7 +191,7 @@ const Factions = (app)=>{
           <div class="dim pointer underline-hover b white bg-gray br2 pa1" onClick=${()=>newFaction({template:toGenerate, name:toGenerate})}>Add</div>
         </div>
       </div>
-      ${sigil.map(f => f.UI)}
+      ${sigil.map(faction)}
     </div>
     <div class="ma1">
       <div class="flex flex items-center justify-between">
@@ -153,7 +203,7 @@ const Factions = (app)=>{
           <div class="dim pointer underline-hover b white bg-gray br2 pa1" onClick=${()=>newFaction({template:toGenerate, name:toGenerate})}>Add</div>
         </div>
       </div>
-      ${outsiders.map(f => f.UI)}
+      ${outsiders.map(faction)}
     </div>
     <div class="ma1 ${created.length == 0 ? "hidden" : ""}">
       <div class="flex flex items-center justify-between">
@@ -165,7 +215,7 @@ const Factions = (app)=>{
           <div class="dim pointer underline-hover b white bg-gray br2 pa1" onClick=${()=>newFaction({front:toGenerate})}>Add</div>
         </div>
       </div>
-      ${created.map(f => f.UI)}
+      ${created.map(faction)}
     </div>
   </div>
   `
@@ -180,6 +230,18 @@ const Pantheons = (app)=>{
     app.refresh()
   }
 
+  //per diety 
+  const diety = (f,d,i)=>html`
+  <div class="mv1">
+    <span class="b f4">${d.name}</span> [${d.alignment[1]}] 
+    <div class="ph1">
+      <div>Rank: ${d.rank}, Domains: ${d.domainsShort.join("/")}</div>
+      ${d.parent ? html`<div>Parent: ${d.parent.name}</div>` : ""}
+      <div>Home: <span class="link pointer underline-hover blue" onClick=${()=>app.show = ["areas", d.home.id].join(".")}>${d.home.parent.name}, ${d.home.name}</span></div>
+    </div>
+  </div>
+  `
+
   //final html
   return html`
   <div class="m-auto mw6">
@@ -188,8 +250,11 @@ const Pantheons = (app)=>{
   <div class="flex flex-wrap justify-center">
     ${pantheons.map(p=>html`
     <div class="bg-white-40 ba br2 mh1 pa1">
-      <h3 class="mv1">${p.name}</h3>
-      <div class="ph1">${p.children.map((c,i)=>c.UI)}</div>
+      <div class="flex items-center justify-between">
+        <h3 class="mv1">${p.name}</h3>
+        <div class="dim pointer underline-hover b white bg-light-blue br2 pa1" onClick=${()=>p.save()}>Save</div>
+      </div>
+      <div class="ph1">${p.children.map((c,i)=>diety(p, c, i))}</div>
     </div>`)}
   </div>
   `

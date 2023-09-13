@@ -27,322 +27,159 @@ const PLOTS = {
 const FRONTS = {
   "Misguided Good": {
     "impulse": "to do what is “right” no matter the cost",
-    "type": "Ambitious Organizations"
+    "type": "Ambitious Organizations",
+    "alignment" : ["good"]
   },
   "Thieves Guild": {
     "impulse": "to take by subterfuge",
-    "type": "Ambitious Organizations"
+    "type": "Ambitious Organizations",
+    "alignment" : ["evil","chaotic"]
   },
   "Cult": {
     "impulse": "to infest from within",
-    "type": "Ambitious Organizations"
+    "type": "Ambitious Organizations",
+    "alignment" : ["evil","chaotic","lawful"]
   },
   "Religious Organization": {
     "impulse": "to establish and follow doctrine",
-    "type": "Ambitious Organizations"
+    "type": "Ambitious Organizations",
+    "alignment" : ["good","lawful","neutral","evil","chaotic"]
   },
   "Corrupt Government": {
     "impulse": "to maintain the status quo",
-    "type": "Ambitious Organizations"
+    "type": "Ambitious Organizations",
+    "alignment" : ["lawful","evil","neutral"]
   },
   "Cabal": {
     "impulse": "to absorb those in power, to grow",
-    "type": "Ambitious Organizations"
+    "type": "Ambitious Organizations",
+    "alignment" : ["lawful","evil"]
   },
   "God": {
     "impulse": "to gather worshippers",
-    "type": "Planar Forces"
+    "type": "Planar Forces",
+    "alignment" : ["good","lawful","neutral","evil","chaotic"]
   },
   "Immortal Prince": {
     "impulse": "to release imprisoned immortals",
-    "type": "Planar Forces"
+    "type": "Planar Forces",
+    "alignment" : ["lawful","chaotic","evil","neutral"]
   },
   "Elemental Lord": {
     "impulse": "to tear down creation to its component parts",
-    "type": "Planar Forces"
+    "type": "Planar Forces",
+    "alignment" : ["chaotic","evil"]
   },
   "Force of Chaos": {
     "impulse": "to destroy all semblance of order",
-    "type": "Planar Forces"
+    "type": "Planar Forces",
+    "alignment" : ["chaotic","evil"]
   },
   "Choir of Angels": {
     "impulse": "to pass judgement",
-    "type": "Planar Forces"
+    "type": "Planar Forces",
+    "alignment" : ["good","lawful"]
   },
   "Construct of Law": {
     "impulse": "to eliminate perceived disorder",
-    "type": "Planar Forces"
+    "type": "Planar Forces",
+    "alignment" : ["lawful"]
   },
   "Lord of the Undead": {
     "impulse": "to seek true immortality",
-    "type": "Arcane Enemies"
+    "type": "Arcane Enemies",
+    "alignment" : ["evil"],
+    "minions" : ["Undead"]
   },
   "Power-mad Wizard": {
     "impulse": "to seek magical power",
-    "type": "Arcane Enemies"
+    "type": "Arcane Enemies",
+    "alignment" : ["evil","chaotic"]
   },
   "Sentient Artifact": {
     "impulse": "to find a worthy wielder",
-    "type": "Arcane Enemies"
+    "type": "Arcane Enemies",
+    "alignment" : ["good","lawful","neutral","evil","chaotic"]
   },
   "Ancient Curse": {
     "impulse": "to ensnare",
-    "type": "Arcane Enemies"
+    "type": "Arcane Enemies",
+    "alignment" : ["evil","chaotic"]
   },
   "Chosen One": {
     "impulse": "to fulfill or resent their destiny",
-    "type": "Arcane Enemies"
+    "type": "Arcane Enemies",
+    "alignment" : ["good","lawful","neutral","evil","chaotic"]
   },
   "Dragon": {
     "impulse": "to hoard gold and jewels, to protect the clutch",
-    "type": "Arcane Enemies"
+    "type": "Arcane Enemies",
+    "alignment" : ["good","lawful","neutral","evil","chaotic"],
+    "minions" : ["Dragon"]
   },
   "Wandering Barbarians": {
     "impulse": "to grow strong, to drive their enemies before them",
-    "type": "Hordes"
+    "type": "Hordes",
+    "alignment" : ["neutral","evil","chaotic"]
   },
   "Vermin": {
     "impulse": "to breed, to multiply and consume",
-    "type": "Hordes"
+    "type": "Hordes",
+    "alignment" : ["evil","chaotic"],
+    "minions" : ["Vermin"]
   },
   "Underground Dwellers": {
     "impulse": "to defend the complex from outsiders",
-    "type": "Hordes"
+    "type": "Hordes",
+    "alignment" : ["good","lawful","neutral","evil","chaotic"]
   },
   "Plague of the Undead": {
     "impulse": "to spread",
-    "type": "Hordes"
+    "type": "Hordes",
+    "alignment" : ["evil","chaotic"],
+    "minions" : ["Undead"]
   },
   "Abandoned Tower": {
     "impulse": "to draw in the weak-willed",
-    "type": "Cursed Places"
+    "type": "Cursed Places",
+    "alignment" : ["evil","chaotic"]
   },
   "Spawning Ground": {
     "impulse": "to spawn",
-    "type": "Cursed Places"
+    "type": "Cursed Places",
+    "alignment" : ["evil","chaotic"]
   },
   "Elemental Vortex": {
     "impulse": "to grow, to tear apart reality",
-    "type": "Cursed Places"
+    "type": "Cursed Places",
+    "alignment" : ["evil","chaotic"]
   },
   "Dark Portal": {
     "impulse": "to disgorge demons",
-    "type": "Cursed Places"
+    "type": "Cursed Places",
+    "alignment" : ["evil","chaotic"]
   },
   "Shadowland": {
     "impulse": "to corrupt or consume the living",
-    "type": "Cursed Places"
+    "type": "Cursed Places",
+    "alignment" : ["evil","chaotic"]
   },
   "Place of Power": {
     "impulse": "to be controlled or tamed",
-    "type": "Cursed Places"
+    "type": "Cursed Places",
+    "alignment" : ["good","lawful","neutral","evil","chaotic"]
   }
 }
 
-const Home = (RNG,F,pid=null)=>{
-  let al = RNG.pickone(Details.alignment[RNG.pickone(F.alignment.split("/"))])
-  //plane 
-  let p = pid ? [F.app.poi.OuterPlanes[pid]] : [F.app.poi.OuterPlanes.Outlands, ...Object.values(F.app.poi.OuterPlanes).filter(p=>p.tags.includes(al))]
-  let plane = RNG.pickone(p)
-  let layer = plane.layers ? RNG.pickone(plane.layers) : plane.name
+/*
+  Minion Choices 
+*/
+const MinionList = 'Aberration,Animal,Dragon,Fey,Magical Beast,Undead,Vermin,Genie,Giant,People,Folk/1,1,1,1,1,1,1,1,1,1,1'
+const NeedSpecifics = 'Aberration,Dragon,Magical Beast,Genie,Giant'
 
-  //create region 
-  let rOpts = {
-    parent: plane.name,
-    layer
-  }
-  return new F.app.gen.Region(F.app,rOpts)
-}
-
-const Random = {
-  "Misguided Good"(F) {
-    let RNG = new Chance(F.id)
-
-    let d = F.app.pantheons.map(p=>p.children).flat().filter(p=>p.alignment[1].includes("G"))
-    if (RNG.bool() && d.length > 0) {
-      F.diety = RNG.pickone(d)
-      F._pantheon = F.diety.pantheon.id
-    } else {
-      F._template = RNG.pickone(Details.factions.good)
-    }
-  },
-  "Thieves Guild"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "chaotic"])
-  },
-  "Cult"(F) {
-    let RNG = new Chance(F.id)
-
-    let d = F.app.pantheons.map(p=>p.children).flat().filter(p=>p.alignment[1].includes("E"))
-    if (RNG.bool() && d.length > 0) {
-      F.diety = RNG.pickone(d)
-      F._pantheon = F.diety.pantheon.id
-    } else {
-      F._template = RNG.pickone(Details.Outsiders.Fiend)
-    }
-  },
-  "Religious Organization"(F) {
-    let RNG = new Chance(F.id)
-
-    let d = F.app.pantheons.map(p=>p.children).flat()
-    F.diety = RNG.pickone(d)
-    F._pantheon = F.diety.pantheon.id
-  },
-  "Corrupt Government"(F) {
-    let RNG = new Chance(F.id)
-    let alignment = F.alignment = RNG.pickone(["evil", "neutral", "lawful"])
-  },
-  "Cabal"(F) {
-    let RNG = new Chance(F.id)
-    let alignment = F.alignment = RNG.pickone(["evil", "chaotic", "lawful"])
-    F._template = RNG.pickone(Details.factions[alignment])
-  },
-  "God"(F) {
-    let RNG = new Chance(F.id)
-
-    let d = F.app.pantheons.map(p=>p.children).flat()
-    F.diety = RNG.pickone(d)
-    F._pantheon = F.diety.pantheon.id
-  },
-  "Immortal Prince"(F) {
-    let RNG = new Chance(F.id)
-
-    let opts = {
-      baseAlignment: RNG.pickone(["evil", "chaotic", "lawful", "good"])
-    }
-    //app,id,pantheon,opts={}
-    F.diety = F.app.gen.Diety(F.app, RNG.hash(), null, opts)
-  },
-  "Elemental Lord"(F) {
-    let RNG = new Chance(F.id)
-
-    let opts = {
-      baseAlignment: RNG.pickone(["evil", "chaotic", "lawful", "good"])
-    }
-    //app,id,pantheon,opts={}
-    F.diety = F.app.gen.Diety(F.app, RNG.hash(), null, opts)
-  },
-  "Force of Chaos"(F) {
-    let RNG = new Chance(F.id)
-
-    let opts = {
-      baseAlignment: "chaotic"
-    }
-    //app,id,pantheon,opts={}
-    F.diety = F.app.gen.Diety(F.app, RNG.hash(), null, opts)
-  },
-  "Choir of Angels"(F) {
-    let RNG = new Chance(F.id)
-
-    F._template = RNG.pickone(Details.Outsiders.Celestial)
-  },
-  "Construct of Law"(F) {
-    let RNG = new Chance(F.id)
-
-    if (RNG.bool()) {
-      F._template = RNG.pickone(["Archon","Modron","Baatezu"])
-    } else {
-      let opts = {
-        baseAlignment: "lawful"
-      }
-      //app,id,pantheon,opts={}
-      F.diety = F.app.gen.Diety(F.app, RNG.hash(), null, opts)
-    }
-  },
-  "Lord of the Undead"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = "evil"
-    F._minions.push("Undead")
-  },
-  "Power-mad Wizard"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = "evil"
-  },
-  "Sentient Artifact"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "good", "chaotic", "neutral", "lawful"])
-  },
-  "Ancient Curse"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = "evil"
-  },
-  "Chosen One"(F) {
-    let RNG = new Chance(F.id)
-
-    let alignment = RNG.pickone(["evil", "good", "chaotic","lawful"])
-    F._template = RNG.pickone(Details.factions[alignment])
-  },
-  "Dragon"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "good"])
-    F._minions.push("Dragon")
-  },
-  "Wandering Barbarians"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "good", "chaotic", "neutral", "lawful"])
-  },
-  "Vermin"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "chaotic"])
-    F._minions.push("Vermin")
-  },
-  "Underground Dwellers"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "good", "chaotic", "neutral", "lawful"])
-  },
-  "Plague of the Undead"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = "evil"
-    F._minions.push("Undead")
-  },
-  "Abandoned Tower"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "chaotic"])
-  },
-  "Spawning Ground"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "chaotic"])
-  },
-  "Elemental Vortex"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "chaotic"])
-  },
-  "Dark Portal"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = "evil"
-  },
-  "Shadowland"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = "evil"
-  },
-  "Place of Power"(F) {
-    let RNG = new Chance(F.id)
-
-    F.alignment = RNG.pickone(["evil", "good", "chaotic", "neutral", "lawful"])
-  },
-}
-
-const ByDietyAlignment = {
-  "good": 'Misguided Good,Religious Organization,Corrupt Government,God,Choir of Angles,Sentient Artifact,Chosen One,Place of Power',
-  "neutral": 'Thieves Guild,Religious Organization,Cabal,God,Immortal Prince,Choir of Angels,Sentient Artifact,Chosen One,Place of Power',
-  "evil": 'Thieves Guild,Cult,Religious Organization,Cabal,God,Immortal Prince,Elemental Lord,Force of Chaos,Construct of Law,Power-mad Wizard,Sentient Artifact,Ancient Curse,Chosen One,Dragon,Wandering Barbarians,Plague of the Undead,Abandoned Tower,Spawning Ground,Elemental Vortex,Dark Portal,Shadowland,Place of Power'
-}
-
+/*
+  Manage Ranks 
+*/
 const RANKS = ["3,2,1", "5,4,2", "7,6,3", "9,6,4"]
 const RANKINDEX = [-1, -1, -1, 0, 0, 1, 1, 2, 2, 3, 3]
 
@@ -354,85 +191,89 @@ class Faction {
   constructor(app, opts={}) {
     this.app = app
 
-    let {id=chance.hash(), pantheon=null} = opts
-    this.id = id
+    this.id = opts.id || chance.hash()
     this.opts = opts
+    this.gen = "Faction"
     //use templates 
     this._template = opts.template
-
-    let RNG = new Chance(this.id)
-
-    //initial state 
-    this.leader = null
-    this._minions = []
-    this._children = []
-    this.alignment = "neutral"
-    this._stats = RNG.shuffle(["Cunning", "Force", "Wealth"])
-
-    this.rank = RNG.weighted([3, 5, 7, 9], [4, 6, 2, 1]) + RNG.pickone([0, 1])
-    this.rMod = [0, RNG.pickone([0, 1]), RNG.pickone([0, 1])]
-
-    this.magic = RNG.weighted(["Low", "Medium", "High"], [2, 3, 1])
-
     //has classes just like an html element 
     this.class = ["faction"]
 
-    //see if belongs to a pantheon 
-    this._pantheon = pantheon
-    this.diety = pantheon ? RNG.pickone(app.factions[pantheon].children) : null
+    //initial state 
+    this.state = {
+      rank : 0,
+      magic : 0,
+      leader : [null],
+      plot : []
+    }
 
-    let tmp = this.template
-    //pull fronts from template, diety, or random 
-    let _fronts = tmp.fronts ? tmp.fronts.split(",") : this.diety ? ByDietyAlignment[this.diety.alignment[2]].split(",") : Object.keys(FRONTS)
+    //for UI 
+    this.generated = [] 
+    //state that does not change 
+    this._minions = []
+    this._children = []
+    this.alignment = null 
+
+    //check for template 
+    if (opts.template) {
+      this.class.push(this.template.class)
+      this.alignment = this.template.alignment.join("/")
+      //minions 
+      let m = this.template.class[0] == "Sigil" ? "PCs" : this.template.class[0] == "Outsider" ? opts.template : null 
+      if(m) {
+        this._minions.push(m)
+      }
+    }
+
+    //start generation 
+    let RNG = new Chance(this.id)
+
+    //core stats 
+    this._stats = RNG.shuffle(["Cunning", "Force", "Wealth"])
+    //stat rank 
+    let _rank = RNG.weighted([3, 5, 7, 9], [4, 6, 2, 1]) + RNG.pickone([0, 1])
+    this.state.rank = opts.rank || _rank    
+    this.rMod = [0, RNG.pickone([0, 1]), RNG.pickone([0, 1])]
+
+    //magic level 
+    this.state.magic = RNG.weighted(["Low", "Medium", "High"], [2, 3, 1])
+
+    //pull fronts from template, or random 
+    let _fronts = this.template.fronts ? this.template.fronts.split(",") : Object.keys(FRONTS)
     //set type of front 
-    this.front = opts.front ? opts.front : RNG.pickone(_fronts)
+    this._front = opts.front ? opts.front : RNG.pickone(_fronts)
 
-    let _front = this._front = FRONTS[this.front]
-    this.impulse = _front.impulse
+    //generate faction based upon front 
+    if(!opts.template && !opts.pantheon){
+      this.alignment = RNG.pickone(this.front.alignment)
+      this._minions = this.front.minions ? this.front.minions : [WeightedString(MinionList,RNG)]
+    }  
 
-    this.plot = [WeightedString(PLOTS[_front.type],RNG), 0, RNG.pickone([4, 8, 12])]
+    //set the current plot 
+    this.completePlot()
 
-    //generate based upon front 
-    if(!opts.template && !pantheon){
-      Random[this.front](this)
+    //establish leader and home 
+    this._home = null 
+    if(!opts.pantheon) {
+      //set leader 
+      this.state.leader = this.front.type == "Cursed Places" ? [null] : [RNG.natural(),this.rank < 6 ? 3 : 4]
+      
+      //set home region
+      let hal = RNG.pickone(Details.alignment[RNG.pickone(this.alignment.split("/"))])
+      //home region  
+      let _home = RNG.pickone([...app.regions.filter(r => r.plane && r.plane[0] == "Outlands"), ...app.regions.filter(r=>r.plane && r.parent.tags.includes(hal))])
+      this._home = _home.id 
+      //add a claim 
+      this.addClaim(_home)
     }
-
-    tmp = this.template
-    if (tmp.class) {
-      this.class.push(tmp.class)
-    }
-    if (tmp.alignment && tmp.alignment[0] != "neutral") {
-      this.alignment = tmp.alignment.join("/")
-    }
-
-    //check for sigil or outlands 
-    if (this.hasClass("Sigil")) {
-      this._minions.push("PCs")
-    }
-    if(Details.Outsiders.Outsiders.includes(this._template)){
-      this._minions.push(this._template)
-    }
-    if (this.diety) {
-      let form = this.diety.form
-      this._minions.push(form.base == "Outsider" ? form.tags[0] : form.base)
-      this.leader = Likely(70, RNG) ? this.diety.form : this.minion(RNG, this.rank < 6 ? 3 : 4)
-      this.alignment = this.diety.alignment[0]
-    }
-
-    this.leader = this.leader == null ? this.minion(RNG, this.rank < 6 ? 3 : 4) : this.leader
-    if(_front.type == "Cursed Places") {
-      this.leader = null
-      this.noJob = true
-    }
-
-    //set home region 
-    this.addClaim(Home(RNG, this, tmp.home), ["home", this.rank])
 
     //save to app 
     this.app.factions[this.id] = this
-
-    console.log(this)
   }
+
+  /*
+    Get functions for information 
+  */
 
   get name() {
     let {opts, _template} = this
@@ -443,45 +284,47 @@ class Faction {
     return this._template ? this.app.gen.Factions[this._template] : {}
   }
 
+  set rank (r) {
+    this.state.rank = r 
+  }
+
+  get rank () {
+    return this.state.rank
+  }
+
   get stats() {
-    let {_stats, rank, rMod} = this
+    let {rank} = this.state 
+    let {_stats, rMod} = this
     let base = RANKS[RANKINDEX[rank]].split(",").map(Number)
     let vals = rMod.map((v,i)=>i == 0 ? rank : base[i] + rMod[i])
 
     return Object.fromEntries(_stats.map((s,i)=>[s, vals[i] < 0 ? 0 : vals[i]]))
   }
 
-  /*
-  modify  
-  */
-
-  modify(what, val) {
-    if (what == "plot") {
-      this.plot = this.opts.plot = [WeightedString(PLOTS[this._front.type]), 0, chance.pickone([4, 8, 12])]
-    } else if (what == "plot+") {
-      if (this.plot[1] == 0 && val == -1) {
-        return
-      }
-
-      this.plot[1] += val
-      this.opts.plot = this.plot
-
-      if (this.plot[1] >= this.plot[2]) {
-        this.completePlot()
-      }
-    } else if (what == "rank") {
-      if ((this.rank == 10 && val == 1) || (this.rank == 1 && val == -1)) {
-        return
-      }
-      this.rank = this.opts.rank = this.rank + val
-    } else if (what == "delete") {
-      DB.removeItem(this.id)
-      delete this.app.factions[this.id]
-    }
+  get home() {
+    return this.app.areas[this._home]
   }
 
-  completePlot() {
-    this.plot = this.opts.plot = [WeightedString(PLOTS[this._front.type]), 0, chance.pickone([4, 8, 12])]
+  get claims () {
+    return this.app.regions.filter(r => r.claims[this.id])
+  }
+
+  get leader () {
+    let [id,rank] = this.state.leader
+    
+    return id == null ? null : id == "diety" ? this.diety.form : this.minion({id,rank})
+  }
+
+  get plot () {
+    return this.state.plot[0]
+  }
+
+  get hasJobs () {
+    return this.front.type != "Cursed Places"
+  }
+
+  get front () {
+    return FRONTS[this._front]
   }
 
   /*
@@ -523,14 +366,69 @@ class Faction {
     }
   }
 
-  //get minions / forces 
-  minion(RNG=chance, threat) {
+  /*
+  modify  
+  */
+
+  modify(what, val) {
+    if (what == "plot") {
+      this.state.plot[0] = [WeightedString(PLOTS[this._front.type]), 0, chance.pickone([4, 8, 12])]
+    } else if (what == "plot+") {
+      if (this.plot[1] == 0 && val == -1) {
+        return
+      }
+
+      this.plot[1] += val
+      this.opts.plot = this.plot
+
+      if (this.plot[1] >= this.plot[2]) {
+        this.completePlot()
+      }
+    } else if (what == "rank") {
+      if ((this.rank == 10 && val == 1) || (this.rank == 3 && val == -1)) {
+        return
+      }
+      this.rank += val 
+    } else if (what == "delete") {
+      DB.removeItem(this.id)
+      delete this.app.factions[this.id]
+    }
+
+    this.app.refresh()
+  }
+
+  completePlot() {
+    this.state.plot.unshift([WeightedString(PLOTS[this.front.type]), 0, chance.pickone([4, 8, 12])]) 
+  }
+
+  /*
+    Generate functions
+  */
+  random(gen, data = {}) {
+    let {app, generated} = this
+
+    if(gen == "minion"){
+      generated.push(["Minion",this.minion(data)])
+    }
+
+    app.refresh()
+  }
+
+  /*
+    Minions 
+    get minions / forces 
+  */
+  minion(o={}) {
+    let RNG = new Chance(o.id || chance.hash())
+    let threat= o.rank || RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5])
+    
+    
     let E = this.app.gen.Encounters
     //pick the type of minion 
     let what = this._minions.length > 0 ? RNG.pickone(this._minions) : null
     let res = E.ByThreat(RNG, {
       what,
-      threat
+      threat 
     })
     //get adventuer class 
     res.adventuer = E.NPCs.adventurer(RNG)
@@ -540,20 +438,23 @@ class Faction {
   }
 
   /*
-    handle all region interaction  
+    Region interaction  
   */
 
-  get home() {
-    return Object.values(this.app.areas).find(r=>r._assets && r._assets.filter(a=>a[0] == this.id && a[1] == "home").length > 0)
-  }
-
   //add to region 
-  addClaim(region, asset) {
-    let what = [this.id, ...asset, []]
-    region._assets.push(what)
+  addClaim(region, asset = null) {
+    asset = asset == null ? ["base", this.rank, 0, []] : asset
+
+    let claims = region.claims[this.id] || []
+    claims.push(asset)
+
+    region.claims[this.id] = claims
   }
 
-  //class functionality 
+  /*
+    Class functionality 
+  */
+
   addClass(c) {
     this.class.push(c)
   }
@@ -566,12 +467,88 @@ class Faction {
     return this.class.includes(c)
   }
 
+  /*
+    Save and Load 
+  */
+
   save() {
     let opts = Object.assign({
-      gen: this.gen,
       name: this.name
     }, this.opts)
-    DB.setItem(this.id, opts)
+
+    let data = {
+      gen: this.gen,
+      opts,
+      state : this.state
+    }
+    
+    DB.setItem(this.id, data)
+    this.app.game.factions.add(this.id)
+  }
+
+  static async load(app,id) {
+    //load state 
+    let {opts,state} = await DB.getItem(id)
+    opts.id = id 
+    //create new explorer and apply state 
+    let F = new Faction(app,opts)
+    Object.assign(F.state, state)
+    
+    return F
+  }
+
+  /*
+    UI 
+  */
+
+  get UI () {
+    let {app, generated} = this 
+    let {html} = app 
+
+    //splice generated objects 
+    const GenSplice = (i)=>{
+      generated.splice(i, 1)
+      app.refresh()
+    }
+
+    const detailDiv = (title,what) => html`<div class="ph2"><b>${title}:</b> ${what}</div>`
+
+    return html`
+    <div class="bg-white-50 ba br2 mw6 ma1 pa1">
+      <div class="flex items-center justify-between">
+        <h3 class="ma1" onClick=${()=>console.log(this)}>${this.name} (${this.alignment}) [${this.rank}]</h3>
+        <div class="dropdown pointer">
+          <div class="underline-hover b white bg-light-blue br2 pa1 ml2">Options</div>
+          <div class="dropdown-content bg-white ba bw1 pa1">
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.save()}>Save</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:0})}>Random Minion</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",1)}>Increase Rank</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",-1)}>Decrease Rank</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot")}>New Plot</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot+",1)}>Progress Plot</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot+",-1)}>Foil Plot</div>
+            <div class="link pointer dim underline-hover red ma1" onClick=${()=>this.modify("delete")}>Delete</div>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-around ph2 mb1">${Object.entries(this.stats).map(([name,val]) => html`<div><b>${name}:</b> ${val}</div>`)}</div>
+      ${detailDiv("Impulse",this.front.impulse)}
+      ${this.diety ? detailDiv("Diety",this.diety.name) : ""}
+      ${this.leader ? detailDiv("Leader",this.leader.short) : ""}
+      <div class="ph2"><b>Plot:</b> ${this.plot[0]} [${this.plot.slice(1).join("/")}]</div>
+      <div class="mh2">
+        <h4 class="ma0">Claims</h4>
+        ${this.claims.map(r => html`<div class="mh1"><span class="link pointer underline-hover blue" onClick=${()=>app.show = ["areas", r.id].join(".")}>${r.parent.name}, ${r.name}</span></div>`)}
+      </div>
+      ${generated.length == 0 ? "" : html`
+      <h4 class="ma0 mt1 mh2">Generated</h4>
+      ${generated.map(([what,data],i)=>html`
+        <div class="mh2 flex justify-between items-center">
+          <div>${what}: ${data.short}</div>
+          <div class="pointer white hover-red link dim dib bg-gray tc br2 pa1" onClick=${()=>GenSplice(i)}>X</div>
+        </div>`)}
+      `}
+    </div>`
   }
 }
 

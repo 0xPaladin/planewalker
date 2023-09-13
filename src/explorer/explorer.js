@@ -128,13 +128,9 @@ class App extends Component {
     })
 
     //load all planes 
-    BuildArray(2, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, p.layers[0]].join(","))))
-    BuildArray(3, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, RNG.pickone(p.layers)].join(","))))
-    BuildArray(5, ()=>Object.values(Gen.POI.InnerPlanes).forEach(p=>MakeRegion([p.name, p.name].join(","))))
+    BuildArray(2, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, p.layers ? p.layers[0] : p.name].join(","))))
+    BuildArray(4, ()=>Object.values(Gen.POI.InnerPlanes).forEach(p=>MakeRegion([p.name, p.name].join(","))))
 
-    //add pantheons 
-    BuildArray(2, ()=> new Gen.Pantheon(this,{id:RNG.hash()}))
-    
     //load factions 
     let factions = [[], []]
     Object.entries(Gen.Factions).forEach(([name,f])=>factions[f.class == "Sigil" ? 0 : 1].push(name))
@@ -148,10 +144,18 @@ class App extends Component {
     }
     )
 
+    //prime world and pantheon
+    BuildArray(5, ()=>new Gen.PrimeWorld(this,{
+      id: RNG.hash()
+    }))
     //randomly create 5 factions 
     BuildArray(5, ()=>new Gen.Faction(this,{
       id: RNG.hash()
     }))
+
+    //random not linked to id 
+    //random characters 
+    BuildArray(5, ()=>new Gen.Explorer(this))
 
     //set all portals 
     this.regions.forEach(r=>r.portal = chance)
@@ -175,8 +179,6 @@ class App extends Component {
     )
     DB.Games.setItem(Game.id, save)
     //save sets 
-    Game.areas.forEach(id=>this.areas[id].save())
-    Game.factions.forEach(id=>this.factions[id].save())
     Game.characters.forEach(id=>this.characters[id].save())
     //refresh 
     this.refresh()
@@ -206,14 +208,6 @@ class App extends Component {
 
   async pullSaved() {
     //iterate
-    Game.areas.forEach(async id=> {
-      let {gen} = await DB.Areas.getItem(id)
-      Gen[gen].load(this,id)
-    })
-    Game.factions.forEach(async id=> {
-      let {gen} = await DB.Factions.getItem(id)
-      Gen[gen].load(this,id)
-    })
     Game.characters.forEach(id=>Gen.Explorer.load(this, id))
   }
 
@@ -327,6 +321,7 @@ class App extends Component {
         <h1 class="pointer underline-hover mv2" onClick=${()=>this.show = "Main"}>Planewalker</h1>
       </div>
       <div class="flex items-center">
+        <div class="ba br1 mh1 pa1"><b>Day:</b> ${Game.time} <b>Coin:</b> ${Game.coin}g</div>
         <input type="text" value=${Game.name} onChange=${(e)=>Game.name = e.target.value}>${Game.name}</input>
         ${!["Factions", "Planes", "Pantheons", "Explorers", "areas", "factions"].includes(view) ? "" : html`<div class="pointer f5 link dim ba bw1 pa1 dib black mh1" onClick=${()=>this.show = "Main"}>Home</div>`}
       </div>
