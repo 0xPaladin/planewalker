@@ -124,7 +124,7 @@ const PerilousShores = (region)=>{
   //"islands", "costal", "lake", "barren", "wetland", "woodland", "lowlands","highlands","standard"
   let T = region.terrain
     , B = region.biome;
-  let base = T == "island" ? RNG.pickone(["island", "archipelago"]) : T == "costal" ? RNG.pickone(["bay", "coast", "peninsula"]) : T == "lake" ? "lake" : "land"
+  let base = T == "islands" ? RNG.pickone(["island", "archipelago"]) : T == "costal" ? RNG.pickone(["bay", "coast", "peninsula"]) : T == "lake" ? "lake" : "land"
   //start with base terrain, alignment and safety 
   let tags = [base, region.alignment, region.safety]
 
@@ -148,9 +148,9 @@ const PerilousShores = (region)=>{
     LikelyPush(50, "difficult")
   }
 
-  //check for parent plane stylings 
+  //check for parent plane stylings, but default to options 
   let pPS = region.parent.PS
-  if (pPS) {
+  if (!region.opts.terrain && pPS) {
     if (pPS.base) {
       tags[0] = WeightedString(pPS.base, RNG)
     }
@@ -397,6 +397,9 @@ class Region extends Area {
 
     //set PS
     PerilousShores(this)
+
+    //return 
+    return app.areas[this.id]
   }
 
   /*
@@ -631,12 +634,12 @@ class Region extends Area {
     DB.setItem(this.id, data)
   }
 
-  static async load(app, id) {
+  static async load(app, id, Gen) {
     //load state 
     let {opts, state} = await DB.getItem(id)
     opts.id = id
-    //create new explorer and apply state 
-    let R = new Region(app,opts)
+    //if it doesn't exist create it 
+    let R = app.areas[id] || new Gen(app,opts)
     Object.assign(R.state, state)
     //update feature map 
     R.state.f = new Map(state.f)
@@ -677,7 +680,7 @@ class Region extends Area {
     } else if (data.front) {
       people = data.minion(RNG)
     } else {
-      people = this._people.length > 0 ? RNG.pickone(this._people) : this.encounter({
+      people = this.lookup("people").length > 0 ? RNG.pickone(this.lookup("people")) : this.encounter({
         id: RNG.natural(),
         what: "Planar"
       })[1]
@@ -697,7 +700,7 @@ class Region extends Area {
     let {i=-1, threat=null, rarity=RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5])} = o
 
     //use local encounters 
-    let local = this.lookup("encounter").map(e=>e.specifics).concat(this._people)
+    let local = this.lookup("encounter").map(e=>e.specifics).concat(this.lookup("people"))
     if (o.useLocal && local.length > 0 && Likely(70, RNG)) {
       return ["Encounter", o.i == undefined ? RNG.pickone(local) : this.lookup("encounter")[o.i].specifics]
     }
@@ -861,7 +864,7 @@ class Region extends Area {
               <span class="f5 link dim dib bg-gray white tc br2 mh1 pa1 ph2">✎</span><h3 class="ma0 mh1">${this.name}, ${this.terrain}, ${this.alignment} [${this.safety}]</h3>
             </div>
             <div class="f4 dropdown-content bg-white ba bw1 pa1">
-              <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.save()}>Save</div>
+              <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.save("areas",this.id)}>Save</div>
               ${addTo.map(a=>html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.add(a, {
       save: true
     })}>Add ${a}</div>`)}

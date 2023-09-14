@@ -11,10 +11,10 @@ const DB = {}
 DB.Games = localforage.createInstance({
   name: "Games"
 });
-DB.Areas = localforage.createInstance({
+DB.areas = localforage.createInstance({
   name: "Areas"
 });
-DB.Factions = localforage.createInstance({
+DB.factions = localforage.createInstance({
   name: "Factions"
 });
 
@@ -129,6 +129,7 @@ class App extends Component {
 
     //load all planes 
     BuildArray(2, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, p.layers[0]].join(","))))
+    BuildArray(5, ()=> MakeRegion("Outlands,Outlands"))
     BuildArray(3, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, RNG.pickone(p.layers)].join(","))))
     BuildArray(5, ()=>Object.values(Gen.POI.InnerPlanes).forEach(p=>MakeRegion([p.name, p.name].join(","))))
 
@@ -164,26 +165,25 @@ class App extends Component {
     this.refresh()
   }
 
-  save() {
-    let sets = ["factions", "areas", "characters"]
+  save(_set,id) {
+    //first save to game 
+    Game[_set].add(id)
+
+    //now save whole game 
+    let sets = ["factions", "areas"]
     let save = {}
 
     //save game handle sets 
-    Object.keys(Game).forEach(k=>{
-      save[k] = sets.includes(k) ? [...Game[k]] : Game[k]
-    }
-    )
+    Object.keys(Game).forEach(k=> save[k] = sets.includes(k) ? [...Game[k]] : Game[k])
     DB.Games.setItem(Game.id, save)
-    //save sets 
-    Game.areas.forEach(id=>this.areas[id].save())
-    Game.factions.forEach(id=>this.factions[id].save())
-    Game.characters.forEach(id=>this.characters[id].save())
+    //save individuals from sets 
+    sets.forEach(s => Game[s].forEach(id=>this[s][id].save()))
     //refresh 
     this.refresh()
   }
 
   async load(id) {
-    let sets = ["factions", "areas", "characters"]
+    let sets = ["factions", "areas"]
     //pull game 
     let game = await DB.Games.getItem(id)
     if (!game) {
@@ -193,28 +193,18 @@ class App extends Component {
     //first generate 
     this.generate(id)
     //write state 
-    Object.keys(Game).forEach(k=>{
-      Game[k] = sets.includes(k) ? new Set(game[k]) : game[k]
-    }
-    )
-    //refresh 
-    this.refresh()
+    Object.keys(Game).forEach(k=> Game[k] = sets.includes(k) ? new Set(game[k]) : game[k])
 
     //load saved 
-    this.pullSaved()
-  }
+    sets.forEach(s => Game[s].forEach(async id => {
+      //find the generator 
+      let {gen} = await DB[s].getItem(id)
+      //load items
+      Gen[gen].load(this,id,Gen[gen])
+    }))
 
-  async pullSaved() {
-    //iterate
-    Game.areas.forEach(async id=> {
-      let {gen} = await DB.Areas.getItem(id)
-      Gen[gen].load(this,id)
-    })
-    Game.factions.forEach(async id=> {
-      let {gen} = await DB.Factions.getItem(id)
-      Gen[gen].load(this,id)
-    })
-    Game.characters.forEach(id=>Gen.Explorer.load(this, id))
+    //refresh 
+    this.refresh()
   }
 
   /*
@@ -230,9 +220,10 @@ class App extends Component {
       }
     }
 
-    new Gen.Region(this,opts)
+    let R = new Gen.Region(this,opts)
+    R.portal = chance
     //add id to game 
-    Game.areas.add(opts.id)
+    Game.areas.add(R.id)
     this.refresh()
   }
   

@@ -142,7 +142,7 @@ const ExploreActions = {
   "Lock": "Tinker/Finesse,Study/Insight,Notice",
   "Trap": "Tinker,Notice/Finesse,Study,Insight/Move,Physique,Resolve",
   //Monster
-  "Track": "Sneak,Move/Shoot,Study,Notice/Insight,Finesse",
+  "Thieves": "Insight/Finesse,Sneak,Command/Notice,Sway,Muscle,Shoot",
   "Attack": "Muscle,Shoot/Physique,Move,Resolve/Command",
   //Obstacle
   "Labor": "Muscle/Study,Focus,Phsyique/Command,Tinker",
@@ -150,8 +150,9 @@ const ExploreActions = {
   //People
   "Treaty": "Bond,Sway/Command,Notice,Study/Finesse",
   "Trade": "Sway/Bond,Notice,Command,Study/Insight,Resolve",
-  "Thieves": "Insight/Finesse,Sneak,Command/Notice,Sway,Muscle,Shoot",
+  "Defamation": "Bond,Sway,Command/Insight,Notice,Study/Resolve",
   //Wilderness
+  "Track": "Sneak,Move/Shoot,Study,Notice/Insight,Finesse",
   "Hidden Trails": "Study/Notice,Move,Physique/Muscle,Insight,Shoot",
   "Environment": "Phsyique/Resolve,Move,Notice/Insight",
 }
@@ -192,7 +193,7 @@ const SetExplore = (where,safety,diff)=>{
       return what
     },
     'Monster'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Track'] : ['Attack'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Thieves'] : ['Attack'])
       return what
     },
     'Obstacle'() {
@@ -200,11 +201,11 @@ const SetExplore = (where,safety,diff)=>{
       return what
     },
     'People'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Trade', 'Treaty'] : ['Thieves'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Trade', 'Treaty'] : ['Defamation'])
       return what
     },
     'Wilderness'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Hidden Trails'] : ['Environment'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Hidden Trails','Track'] : ['Environment'])
       return what
     }
   }
@@ -225,6 +226,7 @@ const SetExplore = (where,safety,diff)=>{
     "area": [0, 2, 0, 1, 2, 5],
     "wilderness": [0, 2, 0, 1, 2, 5],
     "faction": [2, 1, 0, 7, 0, 0],
+    "diety": [3, 1, 1, 5, 0, 0],
     "hazard": [1, 1, 0, 0, 4, 4],
     "obstacle": [1, 1, 0, 0, 4, 4],
     "landmark": [1, 2, 2, 4, 0, 1],

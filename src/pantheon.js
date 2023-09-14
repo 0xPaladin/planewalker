@@ -58,7 +58,7 @@ class Diety extends Faction {
   constructor(app, opts={}) {
     super(app, opts);
 
-    this.gen = "Faction"
+    this.gen = "Diety"
     this.class = ["diety"]
 
     let {alignment, baseAlignment="neutral", minor=0, parent=null, pantheon} = opts
@@ -74,7 +74,7 @@ class Diety extends Faction {
     this.state.rank = minor > 0 ? SumDice("1d5+5", RNG) : SumDice("1d3+2", RNG)
 
     //body form
-    this._form = [RNG.natural(),WeightedString('PCs,Folk,Dragon,Celestial,Fiend,Elemental,Undead,Fey,Aberration,Magical Beast,Vermin/40,20,10,5,5,5,5,5,5,5,5',RNG),4]
+    this._form = [RNG.natural(),WeightedString('PCs,Folk,Dragon,Celestial,Fiend,Elemental,Undead,Fey,Aberration,Magical Beast,Vermin/50,20,10,5,5,5,5,5,5,5,5',RNG),4]
     this.formSpecial = null
 
     //reassign alignment to make sense with form 
@@ -158,8 +158,11 @@ class Diety extends Faction {
         <div class="dropdown pointer">
           <div class="underline-hover b white bg-light-blue br2 pa1 ml2">Options</div>
           <div class="dropdown-content bg-white ba bw1 pa1">
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.save()}>Save</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.save("factions",this.id)}>Save</div>
             <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:0})}>Random Minion</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:1})}>Random Soldier</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:2})}>Random Elite</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:3})}>Random Leader</div>
             <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",1)}>Increase Rank</div>
             <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",-1)}>Decrease Rank</div>
             <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot")}>New Plot</div>

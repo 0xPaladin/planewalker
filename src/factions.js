@@ -388,7 +388,6 @@ class Faction {
       }
 
       this.plot[1] += val
-      this.opts.plot = this.plot
 
       if (this.plot[1] >= this.plot[2]) {
         this.completePlot()
@@ -500,17 +499,18 @@ class Faction {
       opts,
       state : this.state
     }
-    
+
+    //save 
     DB.setItem(this.id, data)
-    this.app.game.factions.add(this.id)
   }
 
-  static async load(app,id) {
+  static async load(app,id,Gen) {
     //load state 
     let {opts,state} = await DB.getItem(id)
     opts.id = id 
-    //create new explorer and apply state 
-    let F = new Faction(app,opts)
+    //if it doesn't exist create it 
+    let F = app.factions[id] || new Gen(app,opts)
+    //asign state 
     Object.assign(F.state, state)
     
     return F
@@ -539,8 +539,11 @@ class Faction {
         <div class="dropdown pointer">
           <div class="underline-hover b white bg-light-blue br2 pa1 ml2">Options</div>
           <div class="dropdown-content bg-white ba bw1 pa1">
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.save()}>Save</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>app.save("factions",this.id)}>Save</div>
             <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:0})}>Random Minion</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:1})}>Random Soldier</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:2})}>Random Elite</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:3})}>Random Leader</div>
             <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",1)}>Increase Rank</div>
             <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",-1)}>Decrease Rank</div>
             <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot")}>New Plot</div>

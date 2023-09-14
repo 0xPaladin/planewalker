@@ -17,10 +17,9 @@ const Main = (app)=>{
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Factions"}>Factions</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Pantheons"}>Pantheons</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.generate()}>Generate New</div>
-    <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.save()}>Save All</div>
     <div class="dropdown">
       <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70  br2 mv1 pa2">Load</div>
-      <div class="dropdown-content bg-white ba bw1 pa1">
+      <div class="w-100 dropdown-content bg-white ba bw1 pa1">
         ${savedGames.map(([name,id])=> html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>app.load(id)}>Load ${name}</div>`)}
       </div>
     </div>
