@@ -11,10 +11,10 @@ const DB = {}
 DB.Games = localforage.createInstance({
   name: "Games"
 });
-DB.areas = localforage.createInstance({
+DB.Areas = localforage.createInstance({
   name: "Areas"
 });
-DB.factions = localforage.createInstance({
+DB.Factions = localforage.createInstance({
   name: "Factions"
 });
 
@@ -128,14 +128,9 @@ class App extends Component {
     })
 
     //load all planes 
-    BuildArray(2, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, p.layers[0]].join(","))))
-    BuildArray(5, ()=> MakeRegion("Outlands,Outlands"))
-    BuildArray(3, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, RNG.pickone(p.layers)].join(","))))
-    BuildArray(5, ()=>Object.values(Gen.POI.InnerPlanes).forEach(p=>MakeRegion([p.name, p.name].join(","))))
+    BuildArray(2, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, p.layers ? p.layers[0] : p.name].join(","))))
+    BuildArray(4, ()=>Object.values(Gen.POI.InnerPlanes).forEach(p=>MakeRegion([p.name, p.name].join(","))))
 
-    //add pantheons 
-    BuildArray(2, ()=> new Gen.Pantheon(this,{id:RNG.hash()}))
-    
     //load factions 
     let factions = [[], []]
     Object.entries(Gen.Factions).forEach(([name,f])=>factions[f.class == "Sigil" ? 0 : 1].push(name))
@@ -149,10 +144,18 @@ class App extends Component {
     }
     )
 
+    //prime world and pantheon
+    BuildArray(5, ()=>new Gen.PrimeWorld(this,{
+      id: RNG.hash()
+    }))
     //randomly create 5 factions 
     BuildArray(5, ()=>new Gen.Faction(this,{
       id: RNG.hash()
     }))
+
+    //random not linked to id 
+    //random characters 
+    BuildArray(5, ()=>new Gen.Explorer(this))
 
     //set all portals 
     this.regions.forEach(r=>r.portal = chance)
@@ -165,25 +168,24 @@ class App extends Component {
     this.refresh()
   }
 
-  save(_set,id) {
-    //first save to game 
-    Game[_set].add(id)
-
-    //now save whole game 
-    let sets = ["factions", "areas"]
+  save() {
+    let sets = ["factions", "areas", "characters"]
     let save = {}
 
     //save game handle sets 
-    Object.keys(Game).forEach(k=> save[k] = sets.includes(k) ? [...Game[k]] : Game[k])
+    Object.keys(Game).forEach(k=>{
+      save[k] = sets.includes(k) ? [...Game[k]] : Game[k]
+    }
+    )
     DB.Games.setItem(Game.id, save)
-    //save individuals from sets 
-    sets.forEach(s => Game[s].forEach(id=>this[s][id].save()))
+    //save sets 
+    Game.characters.forEach(id=>this.characters[id].save())
     //refresh 
     this.refresh()
   }
 
   async load(id) {
-    let sets = ["factions", "areas"]
+    let sets = ["factions", "areas", "characters"]
     //pull game 
     let game = await DB.Games.getItem(id)
     if (!game) {
@@ -193,18 +195,20 @@ class App extends Component {
     //first generate 
     this.generate(id)
     //write state 
-    Object.keys(Game).forEach(k=> Game[k] = sets.includes(k) ? new Set(game[k]) : game[k])
-
-    //load saved 
-    sets.forEach(s => Game[s].forEach(async id => {
-      //find the generator 
-      let {gen} = await DB[s].getItem(id)
-      //load items
-      Gen[gen].load(this,id,Gen[gen])
-    }))
-
+    Object.keys(Game).forEach(k=>{
+      Game[k] = sets.includes(k) ? new Set(game[k]) : game[k]
+    }
+    )
     //refresh 
     this.refresh()
+
+    //load saved 
+    this.pullSaved()
+  }
+
+  async pullSaved() {
+    //iterate
+    Game.characters.forEach(id=>Gen.Explorer.load(this, id))
   }
 
   /*
@@ -220,10 +224,9 @@ class App extends Component {
       }
     }
 
-    let R = new Gen.Region(this,opts)
-    R.portal = chance
+    new Gen.Region(this,opts)
     //add id to game 
-    Game.areas.add(R.id)
+    Game.areas.add(opts.id)
     this.refresh()
   }
   
@@ -318,6 +321,7 @@ class App extends Component {
         <h1 class="pointer underline-hover mv2" onClick=${()=>this.show = "Main"}>Planewalker</h1>
       </div>
       <div class="flex items-center">
+        <div class="ba br1 mh1 pa1"><b>Day:</b> ${Game.time} <b>Coin:</b> ${Game.coin}g</div>
         <input type="text" value=${Game.name} onChange=${(e)=>Game.name = e.target.value}>${Game.name}</input>
         ${!["Factions", "Planes", "Pantheons", "Explorers", "areas", "factions"].includes(view) ? "" : html`<div class="pointer f5 link dim ba bw1 pa1 dib black mh1" onClick=${()=>this.show = "Main"}>Home</div>`}
       </div>

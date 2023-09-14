@@ -10,9 +10,15 @@ import {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, Wei
 //Core Data 
 import*as Details from "./data.js"
 //Encounters 
-import * as Encounters from "./encounters.js"
+import*as Encounters from "./encounters.js"
 //Planes 
 import {Region} from './region.js';
+
+const ByDietyAlignment = {
+  "good": 'Misguided Good,Religious Organization,God,Choir of Angels,Construct of Law',
+  "neutral": 'Thieves Guild,Religious Organization,Cabal,God,Immortal Prince,Choir of Angels,Chosen One,Construct of Law',
+  "evil": 'Thieves Guild,Cult,Religious Organization,Cabal,God,Immortal Prince,Elemental Lord,Force of Chaos,Construct of Law,Chosen One,Dragon,Lord of the Undead'
+}
 
 const Domains = {
   "primary": {
@@ -45,93 +51,153 @@ const Aligment = {
 
 import*as Names from "./names.js"
 
-const Diety = (app,id,pantheon,opts={})=>{
-  let RNG = new Chance(id)
+//A Diety behaves like a faction 
+import {Faction, Fronts} from './factions.js';
 
-  const {alignment, baseAlignment="neutral", minor=0, parent=""} = opts
-  //base alignment
-  let _alignment = RNG.weighted(...Aligment[baseAlignment])
-  let al = RNG.pickone(Details.alignment[_alignment])
+class Diety extends Faction {
+  constructor(app, opts={}) {
+    super(app, opts);
 
-  //name 
-  let name = Names.Diety(RNG)
+    this.gen = "Diety"
+    this.class = ["diety"]
 
-  //body form
-  const getForm = ()=> Encounters.ByRarity({},RNG)
+    let {alignment, baseAlignment="neutral", minor=0, parent=null, pantheon} = opts
+    this._pantheon = pantheon
+    this._parent = parent
 
-  //plane 
-  let p = Object.values(app.poi.OuterPlanes).filter(p=>p.tags.includes(al))
-  let plane = RNG.pickone(p)
-  let layer = plane.layers ? RNG.pickone(plane.layers) : plane.name
+    let RNG = new Chance(this.id)
 
-  //create region 
-  let rOpts = {
-    parent : plane.name,
-    layer
+    //name 
+    this._name = Names.Diety(RNG)
+
+    //update rank 
+    this.state.rank = minor > 0 ? SumDice("1d5+5", RNG) : SumDice("1d3+2", RNG)
+
+    //body form
+    this._form = [RNG.natural(),WeightedString('PCs,Folk,Dragon,Celestial,Fiend,Elemental,Undead,Fey,Aberration,Magical Beast,Vermin/50,20,10,5,5,5,5,5,5,5,5',RNG),4]
+    this.formSpecial = null
+
+    //reassign alignment to make sense with form 
+    baseAlignment = this._form == "Celestial" ? "good" : ["Fiend","Undead"].includes(this._form) ? "evil" : baseAlignment
+    //base alignment
+    let _alignment = RNG.weighted(...Aligment[baseAlignment])
+    let al = RNG.pickone(Details.alignment[_alignment])
+    this.alignment = [_alignment,al]
+
+    //domains 
+    this.domains = [RNG.weighted(Domains.primary.all, Domains.primary[_alignment]), RNG.weighted(Domains.secondary.all, Domains.secondary[_alignment])]
+    this.domainsShort = this.domains.map(d=>RNG.pickone(d.split("/")))
+
+    //redo front 
+    this._front = RNG.pickone(ByDietyAlignment[Details.alignment.byLeter[al.charAt(1)]].split(","))
+
+    //set the current plot 
+    this.completePlot()
+
+    //home region 
+    let _all = app.planes.filter(p=>p.tags.includes(al)).map(_p => _p.children).flat()
+    let _outlands = app.planes.find(p=>p.name == "Outlands").children
+    let _home = RNG.pickone(RNG.pickone([_outlands,_all]))
+    this._home = _home.id   
+    //add a claim 
+    this.addClaim(_home)
+
+    if (pantheon) {
+      this.pantheon.children.push(this)
+      
+      //update if provided 
+      this.formSpecial = this.pantheon.form.includes("Hybrid") ? [RNG.natural(),"Animal"] : this.pantheon.form.includes("Elemental") ? RNG.pickone(RNG.pickone(Details.element).split("/")) : null
+    }
+
+    //mythos figures 
+    let mythos = minor > 0 ? SumDice("2d4", RNG) : minor == 0 && parent == null ? SumDice("1d3", RNG) : 0
+    this.mythos = BuildArray(mythos, ()=> RNG.natural()) 
+
+    //minor dieties
+    BuildArray(minor, ()=>{
+      //pick alignment for minor 
+      let bA = Details.alignment.byLeter[RNG.pickone(al)]
+      new Diety(app, {
+        id : RNG.hash(),
+        pantheon,
+        parent: this.id,
+        baseAlignment: bA
+      })
+    }
+    )
   }
-  let home = new app.gen.Region(app,rOpts)
 
-  //domains 
-  const domains = [RNG.weighted(Domains.primary.all, Domains.primary[_alignment]), RNG.weighted(Domains.secondary.all, Domains.secondary[_alignment])]
-  const domainsShort = domains.map(d=>RNG.pickone(d.split("/")))
-
-  //rank 
-  const rank = minor > 0 ? SumDice("1d5+5", RNG) : SumDice("1d4+1", RNG)
-
-  let diety = {
-    id,
-    name,
-    rank,
-    parent: parent != "" ? pantheon.children.find(d=>d.id == parent) : null,
-    form: getForm(),
-    alignment: [_alignment, al, Details.alignment.byLeter[al.charAt(1)]],
-    domains,
-    domainsShort,
-    home,
-    pantheon
+  get pantheon() {
+    return this._pantheon ? this.app.factions[this._pantheon] : null
   }
 
-  if(!pantheon){
-    return diety
+  get parent () {
+    return this._parent ? this.app.factions[this._parent] : null
   }
 
-  if (pantheon.form && pantheon.form.includes("Hybrid")) {
-    diety.hybrid = Encounters.ByRarity({what:"Animal"},RNG)
-  }
-  if (pantheon.form && pantheon.form.includes("Elemental")) {
-    diety.element = RNG.pickone(RNG.pickone(Details.element).split("/"))
-  }
+  /*
+    UI 
+  */
 
-  //push to array 
-  pantheon.children.push(diety)
+  get UI () {
+    let {app, generated} = this 
+    let {html} = app 
 
-  //minor dieties
-  BuildArray(minor, ()=>{
-    //pick alignment for minor 
-    let bA = Details.alignment.byLeter[RNG.pickone(al)]
-    Diety(app,RNG.hash(), pantheon, {
-      parent: id,
-      baseAlignment: bA
-    })
-  }
-  )
+    //splice generated objects 
+    const GenSplice = (i)=>{
+      generated.splice(i, 1)
+      app.refresh()
+    }
 
-  //mythos figures 
-  let mythos = minor > 0 ? SumDice("2d4", RNG) : minor == 0 && parent == "" ? SumDice("1d3", RNG) : 0
-  BuildArray(mythos, ()=>{
-    pantheon.mythos.push({
-      parent: id,
-      id: chance.hash(),
-      form: getForm()
-    })
+    const detailDiv = (title,what) => html`<div class="ph2"><b>${title}:</b> ${what}</div>`
+
+    return html`
+    <div class="bg-white-50 ba br2 mw6 ma1 pa1">
+      <div class="flex items-center justify-between">
+        <div class="ma1" onClick=${()=>console.log(this)}><span class="b f4">${this.name}</span> (${this.alignment[1]}) [${this.rank}]</div>
+        <div class="dropdown pointer">
+          <div class="underline-hover b white bg-light-blue br2 pa1 ml2">Options</div>
+          <div class="dropdown-content bg-white ba bw1 pa1">
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.save("factions",this.id)}>Save</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:0})}>Random Minion</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:1})}>Random Soldier</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:2})}>Random Elite</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:3})}>Random Leader</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",1)}>Increase Rank</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",-1)}>Decrease Rank</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot")}>New Plot</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot+",1)}>Progress Plot</div>
+            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot+",-1)}>Foil Plot</div>
+            <div class="link pointer dim underline-hover red ma1" onClick=${()=>this.modify("delete")}>Delete</div>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-around ph2 mb1">${Object.entries(this.stats).map(([name,val]) => html`<div><b>${name}:</b> ${val}</div>`)}</div>
+      ${detailDiv("Domains",this.domainsShort.join("/"))}
+      ${detailDiv("Form",this.form.short)}
+      ${this.parent ? detailDiv("Parent",this.parent.name) : ""}
+      ${detailDiv("Impulse",this.front.impulse)}
+      ${this.diety ? detailDiv("Diety",this.diety.name) : ""}
+      ${this.leader ? detailDiv("Leader",this.leader.short) : ""}
+      <div class="ph2"><b>Plot:</b> ${this.plot[0]} [${this.plot.slice(1).join("/")}]</div>
+      <div class="mh2">
+        <h4 class="ma0">Claims</h4>
+        ${this.claims.map(r => html`<div class="mh1"><span class="link pointer underline-hover blue" onClick=${()=>app.show = ["areas", r.id].join(".")}>${r.parent.name}, ${r.name}</span></div>`)}
+      </div>
+      ${generated.length == 0 ? "" : html`
+      <h4 class="ma0 mt1 mh2">Generated</h4>
+      ${generated.map(([what,data],i)=>html`
+        <div class="mh2 flex justify-between items-center">
+          <div>${what}: ${data.short}</div>
+          <div class="pointer white hover-red link dim dib bg-gray tc br2 pa1" onClick=${()=>GenSplice(i)}>X</div>
+        </div>`)}
+      `}
+    </div>`
   }
-  )
 }
 
-
-import {Faction, Fronts} from './factions.js';
 /*
-  Pantheon is a Faction 
+  Pantheon Class 
 */
 
 class Pantheon {
@@ -141,7 +207,7 @@ class Pantheon {
     let {id=chance.hash()} = opts
     this.id = id
     this.opts = opts
-    
+
     this.class = ["pantheon"]
     this.gen = "Pantheon"
 
@@ -155,55 +221,34 @@ class Pantheon {
       this.form = [RNG.weighted(Form, [5, 1, 1, 1, 1, 1, 1, 0]), RNG.weighted(Form, [5, 1, 1, 1, 1, 1, 1, 0])]
     }
 
+    //save to app 
+    this.app.factions[this.id] = this
+
+    //make dieties
     let total = SumDice("2d4+1", RNG);
     //loop until pantheon is full 
     while (this.children.length < total) {
       let _id = RNG.hash()
       let m = SumDice("1d4", RNG)
 
-      Diety(app, _id, this, {
+      new Diety(app, {
+        id: _id,
+        pantheon: this.id,
         minor: m
       })
     }
-
-    //name 
-    this.name = this.children[0].name + " Pantheon"
-    //rank is first diety
-    this.rank = this.children[0].rank
-
-    this._homes = this.children.map(c => null)
-
-    //save to app 
-    this.app.factions[this.id] = this
   }
 
-  get major () {
-    return this.children.filter(c => c.rank > 5)
+  get name () {
+    return this.children[0].name + " Pantheon"
   }
 
-  get minor () {
-    return this.children.filter(c => c.rank <= 5)
+  get major() {
+    return this.children.filter(c=>c.rank > 5)
   }
 
-  addFaction () { 
-    return new this.app.gen.Faction(this.app,{pantheon:this.id})
-  }
-
-  showHome (i) {
-    if(!this._homes[i]){
-      let h = this.children[i].home 
-      let parent = h.length == 2 ? h[0] : h.slice(0,2).join(".")
-      let name = h.length == 2 ? h[1] : h[2]
-
-      let opts = {
-        parent,
-        name
-      }
-
-      let R = new Region(this.app,opts)
-      this.app.setArea(R.id)
-    }
-    else {}
+  get minor() {
+    return this.children.filter(c=>c.rank <= 5)
   }
 }
 

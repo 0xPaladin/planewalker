@@ -194,7 +194,7 @@ class Site extends Area {
   }
 
   get size () {
-    let childSize = this.children.reduce((sum,c) => sum+(c.hasClass("site") ? 1 : 0),0)
+    let childSize = this.children.reduce((sum,c) => sum+(c.class && c.class[0] == "site" ? 1 : 0),0)
     return childSize > 0 ? childSize : 1  
   }
 }

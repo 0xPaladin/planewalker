@@ -15,6 +15,18 @@ const Likely = (p=50,RNG=chance)=>RNG.bool({
 const ZeroOne = (RNG=chance)=>RNG.bool() ? 1 : 0
 const Difficulty = (RNG=chance)=>RNG.weighted([0, 1, 2, 3, 4, 5], [30, 30, 20, 13, 5, 2])
 
+
+const WeightedString = (str,RNG=chance)=>{
+  let[w,p] = str.split("/").map(w=>w.split(","))
+  if (w.length != p.length) {
+    console.log(str)
+  }
+  return RNG.weighted(w, p.map(Number))
+}
+
+/*
+  Non Random Helper Functions 
+*/
 const Hash = (str)=>{
   let hash = 0;
   for (let i = 0, len = str.length; i < len; i++) {
@@ -40,12 +52,4 @@ const BuildArray = (n,f)=>Array.from({
   length: n
 }, f)
 
-const WeightedString = (str,RNG=chance)=>{
-  let[w,p] = str.split("/").map(w=>w.split(","))
-  if (w.length != p.length) {
-    console.log(str)
-  }
-  return RNG.weighted(w, p.map(Number))
-}
-
-export {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray,SpliceOrPush, WeightedString, chance}
+export {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, SpliceOrPush, WeightedString, chance}

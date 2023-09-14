@@ -46,7 +46,7 @@ class Area {
     this.opts = opts 
 
     //if parent wil have i for index of its child 
-    this._parent = opts.parent || ""
+    this._parent = opts.parent || null 
 
     //establish id && name 
     this.id = opts.id ? opts.id : chance.hash()
