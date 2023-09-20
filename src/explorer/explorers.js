@@ -205,6 +205,19 @@ const ClassAdvance = {
   "Wizard": ["Focus,Focus,Study"],
 }
 
+//weapon, armor, equipment, power  
+const StartingGear = {
+  "Artificer": ["Equipment.Tools","Power.Design"],
+  "Barbarian": ["Weapon.Heavy Melee","Magical.Attire"],
+  "Bard": ["Equipment.Implements","Power.Spell"],
+  "Cleric": ["Armor.Medium","Power.Blessing"],
+  "Fighter": ["Weapon.Melee","Armor.Medium"],
+  "Monk": ["Power.Maneuver","Magical.Jewelry"],
+  "Ranger" : ["Weapon.Ranged","Equipment.Gear"], 
+  "Rogue": ["Equipment.Documents","Magical"],
+  "Wizard": ["Power.Spell","Equipment.Implements"],
+}
+
 const XP = [0,6,15,24,36,51,69,90,114,141,171,204,240,279,321,366,414,465,519,576]
 const Cost = [1500,3300,6000,8700,12300,16800,22200,28500,35700,43800,52800,62700,73500,85200,97800,111300,125700,141000,157200,174300]
 
@@ -215,8 +228,16 @@ class Explorer {
     this.app = app
     this.id = id
     this.opts = opts
-
     this.class = ["explorer"]
+
+    this.state = {
+      action: 0,
+      hired : null,
+      coin: 0,
+      quests: [],
+      inventory: [],
+      mods : [],
+    }
 
     let RNG = new Chance(this.id)
 
@@ -234,11 +255,17 @@ class Explorer {
 
     //load actions based upon classes 
     let _act = this._actions = {}
-    this.classes.forEach(c => {
+    this.classes.forEach((c,i) => {
       //get the initial advance 
       let advance = ClassAdvance[c][0].split(",")
       advance.forEach(a => {
         _act[a] = _act[a] ? _act[a]+1 : 1 
+      })
+
+      //initial inventory
+      StartingGear[c].forEach((item,j) => {
+        let [gear,what] = item.split(".")
+        this.state.inventory.push(app.gen[gear]({id:RNG.natural(),what,rank:1}).data)
       })
     })
     //get action count total 
@@ -251,20 +278,21 @@ class Explorer {
     }
 
     //starting location 
-    let region = RNG.pickone(app.regions.filter(r => r.plane && r.plane[0] == "Outlands"))
-
-    this.state = {
-      action: 0,
-      hired : null,
-      coin: 0,
-      quests: [],
-      items: [],
-      location: region.id,
-      mods : [],
-    }
+    let region = RNG.pickone(app.regions.filter(r => r.plane && r.plane[0] == "Outlands"))    
+    this.state.location = region.id
 
     //save to app 
     this.app.characters[this.id] = this
+  }
+
+  get inventory () {
+    let gen = this.app.gen 
+    return this.state.inventory.map(d => {
+      let item = this.app.gen[d[0]]({what:d[1]})
+      item.data = d 
+
+      return item
+    })
   }
 
   /*
@@ -273,6 +301,34 @@ class Explorer {
   get location () {
     let id = this.state.location.split(".")[0]
     return this.app.areas[id]
+  }
+
+  get atFeature () {
+    let r = this.location
+    let [rid,i=-1] = this.state.location.split(".")
+    return i == -1 ? {what:"settlement",text:"settlement"} : i == 0 ? r.portal : r.children.find(c => c.id == i)
+  }
+
+  get regionOptions () {
+    let r = this.location
+    let {isKnown} = r.view()
+    let _where = this.atFeature
+    
+    //core options 
+    let options = [["Explore","Explore",_where]] 
+
+    if(_where.what == "settlement"){
+      options.push(["View Market","View Market"])
+    }
+
+    //add moves 
+    r.children.forEach(c => {
+      if(c.text != _where.text && isKnown.includes(c.id)){
+        options.push(["Move","Move to "+c.text,c])
+      }
+    })
+
+    return options
   }
 
   /*
@@ -299,10 +355,13 @@ class Explorer {
     game.coin -= cost 
     //hire 
     this.state.hired = game.time
-    game.characters.add(this.id)
     //save and refresh 
-    this.app.save()
+    this.app.save("characters",this.id)
   }
+
+  /*
+    Values for action / save display 
+  */
 
   get saves () {
     return Object.fromEntries(Object.entries(ActionsBySave).map((([save,acts])=> [save,acts.reduce((sum,a)=> sum+(this.actions[a]>0 ? 1 : 0),0)])))
@@ -314,6 +373,21 @@ class Explorer {
 
   get actionsBySave () {
     return Object.values(ActionsBySave).map((list,i) => list.map(a=> [a,this.actions[a]]))
+  }
+
+  /*
+    Take action in a region 
+  */
+  regionAct ([act,text,data]) {
+    if(act == "Move"){
+      let to = data 
+      let i = to.what == "settlement" ? -1 : to.what == "portal" ? 0 : to.id
+      let rid = this.state.location.split(".")[0]
+      this.state.location = [rid,i].join(".")
+
+      this.app.refresh()
+    }
+    else if (act == "Explore"){}
   }
 
   applyMods () {
@@ -339,6 +413,41 @@ class Explorer {
     E.applyMods()
     
     return E
+  }
+
+  /*
+    UI
+  */
+
+  get UI () {
+    let {app, inventory} = this 
+    let {html} = app 
+    
+    return html`
+  <div class="bg-white-70 br2 mw6 ma1 pa1">
+    <div class="flex flex-wrap justify-between">
+      <h3 class="ma0 mv1">${this.name}</h3>
+      <div class="pointer b white underline-hover br1 pa1 ${this.isHired ? "bg-green" : "bg-light-blue"}" onClick=${()=> this.hire()}>${this.isHired ? "Hired" : "Hire"}</div>
+    </div>
+    <div class="ph1">
+      <div class="flex justify-between">
+        <div>${this.people.short}</div>
+        <div>${this.cost/10} gp/month</div>
+      </div>
+      <div>LV: ${this.level} ${this.classes.join("/")}</div>
+      <div class="flex justify-center">
+        ${Object.entries(this.saves).map(([save,val],i)=> html`
+        <div class="mh2">
+          <div class="f4"><b>${save}</b> +${val}</div>
+          ${this.actionsBySave[i].map(a => html`<div><b>${a[0]}</b> ${a[1]}</div>`)}
+        </div>`)}
+      </div>
+      <div><b>Location:</b> <span class="link pointer dim underline-hover blue mh1" onClick=${()=>app.show = ["areas", this.location.id].join(".")}>${this.location.parent.name}, ${this.location.name}</span></div>
+      <div class="f5 b">Inventory</div>
+      <div class="ph2">${inventory.sort((a,b)=>a.data[0].localeCompare(b.data[0])).map(item => html`<div>${item.text(html)}</div>`)}</div>
+    </div>
+  </div>
+  `
   }
 }
 

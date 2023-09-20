@@ -13,9 +13,10 @@ const Main = (app)=>{
 
   return html`
   <div class="flex flex-column justify-center m-auto mw6">
-    <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Planes"}>Explore the Planes</div>
+    <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Planes"}>Shape the Planes</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Factions"}>Factions</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.show = "Pantheons"}>Pantheons</div>
+    <a class="f3 tc link black pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" href="explorer.html">Explore the Planes</div>
     <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70 db br2 mv1 pa2" onClick=${()=>app.generate()}>Generate New</div>
     <div class="dropdown">
       <div class="f3 tc link pointer dim underline-hover hover-orange bg-white-70  br2 mv1 pa2">Load</div>
@@ -23,7 +24,6 @@ const Main = (app)=>{
         ${savedGames.map(([name,id])=> html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>app.load(id)}>Load ${name}</div>`)}
       </div>
     </div>
-    
   </div>
   `
 }
@@ -95,7 +95,7 @@ const Planes = (app)=>{
   `
 
   return html`
-  <div class="flex justify-center">
+  <div class="flex flex-wrap justify-center">
     <div class="flex flex-column mw6 bg-white-70 db br1 mh1 pa1"><h2 class="ma0">Inner Planes</h2>${innerP.map(PlaneRegions)}</div>
     <div class="flex flex-column mw6 bg-white-70 db br1 mh1 pa1"><h2 class="ma0">Outer Planes</h2>${outerP.map(PlaneRegions)}</div>
   </div>
@@ -106,15 +106,6 @@ const Planes = (app)=>{
 const Factions = (app)=>{
   const {html, activeFactions} = app
   const {toGenerate} = app.state
-  const _fronts = app.gen.Fronts
-
-  //pull lists for selection of new factions 
-  const [_Sigil,_Outsiders] = Object.entries(app.gen.Factions).reduce((all,f,i)=>{
-    let what = f[1].class == "Sigil" ? 0 : 1
-    all[what].push(f)
-    return all
-  }
-  , [[], []])
 
   //create a new faction 
   const newFaction = (opts = {})=>{
@@ -122,50 +113,43 @@ const Factions = (app)=>{
     app.refresh()
   }
 
+  //pull lists for selection of new factions 
+  const [Sigil,Outsiders] = Object.entries(app.gen.Factions).reduce((all,[name,f],i)=>{
+    all[f.class == "Sigil" ? 0 : 1].push(name)
+    return all
+  }
+  , [[], []])
+
+  //used in selection 
+  const Select = {
+    Sigil,Outsiders,
+    "Non-Aligned" : app.gen.Fronts
+  }
+
   //lists of existing factions 
-  const outsiders = activeFactions.filter(f=>f.hasClass("Outsider"))
-  const sigil = activeFactions.filter(f=>f.hasClass("Sigil"))
-  const created = activeFactions.filter(f=>f.class.length == 1)
+  const Existing = {
+    Sigil : activeFactions.filter(f=>f.hasClass("Sigil")),
+    Outsiders : activeFactions.filter(f=>f.hasClass("Outsider")),
+    "Non-Aligned" : activeFactions.filter(f=>f.class.length == 1)
+  }
 
   //final html
   return html`
-  <div class="flex justify-center">
+  <div class="flex flex-wrap justify-center">
+    ${Object.entries(Existing).map(([title,eF])=> html`
     <div class="ma1">
       <div class="flex flex items-center justify-between">
-        <h2 class="mv1">Sigil</h2>
+        <h2 class="mv1">${title}</h2>
         <div class="flex">
           <select class="pa1" value=${toGenerate} onChange=${(e)=> app.updateState("toGenerate",e.target.value)}>
-            ${_Sigil.map(([name,f])=>html`<option value=${name}>${name}</option>`)}
+            ${Select[title].map(name=>html`<option value=${name}>${name}</option>`)}
           </select>
           <div class="dim pointer underline-hover b white bg-gray br2 pa1" onClick=${()=>newFaction({template:toGenerate, name:toGenerate})}>Add</div>
         </div>
       </div>
-      ${sigil.map(f => f.UI)}
+      ${eF.map(f => f.UI)}
     </div>
-    <div class="ma1">
-      <div class="flex flex items-center justify-between">
-        <h2 class="mv1">Outsiders</h2>
-        <div class="flex">
-          <select class="pa1" value=${toGenerate} onChange=${(e)=> app.updateState("toGenerate",e.target.value)}>
-            ${_Outsiders.map(([name,f])=>html`<option value=${name}>${name}</option>`)}
-          </select>
-          <div class="dim pointer underline-hover b white bg-gray br2 pa1" onClick=${()=>newFaction({template:toGenerate, name:toGenerate})}>Add</div>
-        </div>
-      </div>
-      ${outsiders.map(f => f.UI)}
-    </div>
-    <div class="ma1 ${created.length == 0 ? "hidden" : ""}">
-      <div class="flex flex items-center justify-between">
-        <h2 class="mv1">Non-Aligned</h2>
-        <div class="flex">
-          <select class="pa1" value=${toGenerate} onChange=${(e)=> app.updateState("toGenerate",e.target.value)}>
-            ${_fronts.map(name=>html`<option value=${name}>${name}</option>`)}
-          </select>
-          <div class="dim pointer underline-hover b white bg-gray br2 pa1" onClick=${()=>newFaction({front:toGenerate})}>Add</div>
-        </div>
-      </div>
-      ${created.map(f => f.UI)}
-    </div>
+    `)}
   </div>
   `
 }
@@ -236,9 +220,15 @@ const Site = (app)=>{
 }
 
 const Dialog = (app)=>{
-  let {showDialog} = app.state
+  let[what,id,ui] = app.state.dialog.split(".")
 
-  return showDialog == "" ? "" : app.html`<div class="absolute ma6 pa2 o-80 bg-washed-blue br3 shadow-5 z-2">${this[showDialog](app)}</div>`
+  return app.html`
+  <div class="fixed z-2 top-1 left-1 bottom-1 right-1 flex items-center justify-center">
+    <div class="overflow-y-auto o-90 bg-washed-blue br3 shadow-5 pa2">
+      <div class="fr pointer dim underline-hover hover-red bg-gray br2 white b pa1" onClick=${()=>app.updateState("dialog","")}>X</div>
+      ${app[what][id][ui]}
+    </div>
+  </div>`
 }
 
 const About = (app)=>{

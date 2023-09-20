@@ -110,7 +110,7 @@ const clearChains = ()=>(chains = []);
   Name Generation
 */
 // generate name using Markov's chain
-const getBase = function(base, min, max, dupl, RNG) {
+const getBase = function(base, seed, isShort = false) {
   if (base === undefined) {
     ERROR && console.error("Please define a base");
     return;
@@ -125,12 +125,12 @@ const getBase = function(base, min, max, dupl, RNG) {
     return "ERROR";
   }
 
-  if (!min)
-    min = NameBases[base].min;
-  if (!max)
-    max = NameBases[base].max;
-  if (dupl !== "")
-    dupl = NameBases[base].d;
+  //use short if selected
+  const min = NameBases[base].min-(isShort ? 1 : 0)
+  const max = isShort ? Math.max(NameBases[base].max - 2, min) : NameBases[base].max
+  const dupl = isShort ? "" : NameBases[base].d
+
+  let RNG = new Chance(seed)
 
   //ra random value from array 
   let v = data[""]
@@ -202,19 +202,13 @@ const getBase = function(base, min, max, dupl, RNG) {
   return name;
 };
 
-// generate short name for base
-const getBaseShort = function(base,RNG) {
-  const min = NameBases[base].min - 1;
-  const max = Math.max(NameBases[base].max - 2, min);
-  return getBase(base, min, max, "", RNG);
-};
-
 // generate state name based on capital or random name and culture-specific suffix
-const getState = function(base, RNG) {
+const getState = function(base, seed) {
   if (base === undefined)
     return ERROR && console.error("Please define a base");
   
-  let name = getBaseShort(base,RNG)
+  let name = getBase(base,seed,true)
+  let RNG = new Chance(seed)
 
   // exclude endings inappropriate for states name
   if (name.includes(" "))
@@ -259,7 +253,7 @@ const getState = function(base, RNG) {
   let suffix = "ia";
   // standard suffix
 
-  const rnd = Math.random()
+  const rnd = RNG.random()
     , l = name.length;
   if (base === 3 && rnd < 0.03 && l < 7)
     suffix = "terra";
@@ -404,6 +398,6 @@ const Diety = (RNG)=>{
 
 
 //generate cultural names 
-const Cultural = {getBase,getBaseShort,getState}
+const Cultural = {getBase,getState}
 
 export {Region, Diety, Cultural}

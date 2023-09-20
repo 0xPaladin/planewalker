@@ -1,7 +1,7 @@
 /*
   Useful Random Functions 
 */
-import {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, WeightedString, chance} from "./random.js"
+import {RandBetween, BuildArray, WeightedString, chance} from "./random.js"
 
 const _human = {
   base: 'People',
@@ -10,7 +10,6 @@ const _human = {
   tags: []
 }
 
-import {NameBases} from './data.js';
 import*as Names from "./names.js"
 
 class PrimeWorld {
@@ -28,41 +27,23 @@ class PrimeWorld {
     //start generation 
     let RNG = new Chance(this.id)
 
-    //People
-    this.peoples = []
-    const AddPeople = ()=>{
-      let p = Likely(75, RNG) ? app.gen.Encounters.ByRarity({
-        what: "Prime"
-      }, RNG) : Object.assign({}, _human)
-      p.text = "People: " + p.short
-
-      //naming base 
-      p.nameBase = RNG.pickone(NameBases).i
-
-      this.peoples.push(p)
-      return this.peoples.length - 1
-    } 
-
     //function to create regions 
     const makeRegions = (total,isLand)=>{
       let res = []
       while (total > 0) {
-        //generate peoples 
-        let ppl = isLand ? AddPeople() : -1
         //generate region size 
         let r = RandBetween(1, 4, RNG)
         r = r > total ? total : r
         //reduce land 
         total -= r
         //terrain 
-        let terrain = WeightedString(isLand ? this.peoples[ppl].tags.includes("aquatic") ? "islands,costal/1,1" : "costal,wetland,barren,lowlands,woodland,standard,highlands/1,1,2,3,4,5,4" : "costal,ocean,deep ocean/1,2,1", RNG)
+        let terrain = WeightedString(isLand ? "islands,costal,wetland,barren,lowlands,woodland,standard,highlands/1,1,1,2,3,4,4,4" : "costal,ocean,deep ocean/1,2,1", RNG)
         //push to lR 
         res.push({
           id: RNG.hash(),
           parent: this.id,
           scale: r - 1,
-          terrain,
-          ppl
+          terrain
         })
       }
       return res
@@ -79,91 +60,65 @@ class PrimeWorld {
     let continents = this.continents = []
     while (land.length > 0){
       //land 
-      let n = RandBetween(1, land.length)
+      let n = RandBetween(1, land.length, RNG)
       //always add a small waterside 
       let coast = {
         id: RNG.hash(),
         parent: this.id,
         scale: 0,
-        terrain : "costal",
-        ppl : AddPeople()
+        terrain : "costal"
       }
 
-      let name = Names.Cultural.getState(this.peoples[land[0].ppl].nameBase,RNG)
-
-      //make regions 
+      //make continets  
       continents.push({
-        name,
         cultures: [],
         children: [coast,...land.splice(0, n).map(l=>{
           l.ci = continents.length
           return l
         }
-        )]
+        )],
+        get people () { 
+          return this.children.map(c => c.lookup("people")).flat() 
+        }
       })
     }
 
-    this.name = Names.Cultural.getState(RNG.pickone(this.peoples).nameBase,new Chance(this.id))
-
-    //now generate regions, pantheons and cultures 
-    let pantheons = [] 
+    //now generate regions and cultures 
     this.continents.forEach(c=>{
       //make region 
       c.children = c.children.map(o=>new app.gen.Region(app,o))
 
-      //religions / pantheons 
-      let _land = c.children.map(r => r.id)
-      while (_land.length > 0){
-        //land 
-        let n = RandBetween(1, _land.length)
-        pantheons.push({
-          id : RNG.hash(),
-          regions : _land.splice(0, n)
-        })
-      }
+      //get people for name 
+      c.name = Names.Cultural.getState(RNG.pickone(c.people).nameBase,RNG.natural())
 
-      //generate culture - randomly mash people together 
-      let ppl = c.children.map(r => r.opts.ppl)
+      //mash people into cultures 
+      let ppl = c.people.map(p => p.id)
       while (ppl.length > 0) {
-        let n = RandBetween(1, ppl.length)
+        let n = RandBetween(1, ppl.length,RNG)
         let cppl = ppl.splice(0, n)
+        let nB = RNG.pickone(cppl)
+        let nameBase = c.people.find(p => nB == p.id).nameBase
         
         c.cultures.push({
+          name : Names.Cultural.getBase(nameBase,RNG.natural(),true),
           ppl : cppl,
-          nameBase : this.peoples[RNG.pickone(cppl)].nameBase
+          nameBase
         })
       }
     }
     )
 
-    //small pantheons get absorbed 
-    let [remain,absorbed] = pantheons.reduce((ra,p,i) => {
-      if(Likely(p.regions.length < 3 ? 100-p.regions.length*10 : 0,RNG))
-      {ra[1].push(i)}
-      else {
-        ra[0].push(i)
-      }
-      return ra 
-    },[[],[]])
-    //make sure some remain 
-    remain = remain.length == 0 ? absorbed.splice(0,1) : remain 
-    //absorb 
-    absorbed.forEach(ai => {
-      let ap = pantheons[ai]
-      let rp = pantheons[RNG.pickone(remain)]
-      rp.regions.push(...ap.regions)
-    })
-    //splice 
-    this._pantheons = pantheons.filter((p,i) => remain.includes(i))
-
-    //make the pantheons 
-    this._pantheons.forEach(p => new app.gen.Pantheon(app,{id:p.id,prime:this.id}))
+    this.name = Names.Cultural.getState(RNG.pickone(this.people).nameBase,RNG.natural())
 
     console.log(this)
   }
 
   get land() {
     return this.continents.map(c=>c.children).flat()
+  }
+
+  get people () {
+    return this.continents.map(c => c.people).flat()
   }
 
   get cultures() {

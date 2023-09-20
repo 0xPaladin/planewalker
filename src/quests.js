@@ -103,58 +103,27 @@ import {Faction, NPCs} from "./encounters.js"
   Mo,Br,Wp,Sp,Ar,It,Al,Rs,Tk 
 */
 
-const ExploreRewards = {
-  "wilderness": "Trinket,item,Resource,Essence/5,2,2,1",
-  "landmark": "Trinket,item,Resource,Essence/3,3,2,2",
-  "hazard": "Trinket,Resource,Essence,Gear,Implements/3,3,1,2,1",
-  "resource": "Resource,Essence,Trinket,Tools/5,1,2,2",
-  "encounter": "Trinket,Materials,Essence,martial,Implements/2,3,1,3,1",
-  "dungeon": "Trinket,Gold,Essence,Power,item/3,3,1,1,2",
-  "settlement": "Trinket,Materials,Resource,item,Ally/3,2,1,2,2",
-  "faction": "Trinket,Gold,Documents,Ally/2,1,4,3",
-  "martial": "Weapon,Armor/1,1",
-  "equipment": "Documents,Gear,Implements,Supplies,Tools/1,2,1,2,2",
-  "item": "martial,equipment,Magical,Power/4,4,1,1",
-}
-
-//Rewars based upon what action was done 
-const Rewards = (where,diff,RNG=chance)=>{
-  let what = WeightedString(ExploreRewards[where], RNG)
-  //loop to get final result 
-  while (ExploreRewards[what]) {
-    what = WeightedString(ExploreRewards[what], RNG)
-  }
-
-  //get durability 
-  let d = "1d" + WeightedString("4,6,8,10,12/2,3,3,1,1")
-  //get value 
-  let v = diff > 0 ? RNG.rpg(diff + "d6").reduce((sum,r)=>sum + ([0, 1, 1, 1, 1, 2][r]), 0) : 0
-
-  return [what, v, d]
-}
-
 const ExploreActions = {
   //Cypher
+  "Hidden Trails": "Study/Notice,Move,Physique/Muscle,Insight,Shoot",
   "Design": "Study,Focus/Tinker,Notice/Insight",
   "Puzzle": "Study,Tinker/Focus,Finesse,Notice,Muscle/Move,Insight",
   "Curse": "Study,Resolve/Insight,Notice,Focus/Physique",
   //Mechanisms
-  "Lock": "Tinker/Finesse,Study/Insight,Notice",
+  "Device": "Tinker/Finesse,Study/Insight,Notice,Muscle",
   "Trap": "Tinker,Notice/Finesse,Study,Insight/Move,Physique,Resolve",
   //Monster
+  "Track": "Sneak,Move/Shoot,Study,Notice/Insight,Finesse",
   "Thieves": "Insight/Finesse,Sneak,Command/Notice,Sway,Muscle,Shoot",
   "Attack": "Muscle,Shoot/Physique,Move,Resolve/Command",
   //Obstacle
   "Labor": "Muscle/Study,Focus,Phsyique/Command,Tinker",
   "Precarious": "Move/Notice,Insight,Physique/Focus,Finesse,Command",
+  "Environment": "Phsyique/Resolve,Move,Notice/Insight",
   //People
   "Treaty": "Bond,Sway/Command,Notice,Study/Finesse",
   "Trade": "Sway/Bond,Notice,Command,Study/Insight,Resolve",
   "Defamation": "Bond,Sway,Command/Insight,Notice,Study/Resolve",
-  //Wilderness
-  "Track": "Sneak,Move/Shoot,Study,Notice/Insight,Finesse",
-  "Hidden Trails": "Study/Notice,Move,Physique/Muscle,Insight,Shoot",
-  "Environment": "Phsyique/Resolve,Move,Notice/Insight",
 }
 
 const GetActions = (what, RNG = chance) => {
@@ -173,11 +142,11 @@ const GetActions = (what, RNG = chance) => {
 }
 
 //Set Explore values on places - can be called to reset 
-const SetExplore = (where,safety,diff)=>{
+const Exploration = (where,safety,diff=null)=>{
   let RNG = chance
 
   //difficulty 
-  diff = diff === undefined ? Difficulty(RNG) : diff
+  diff = diff === null ? Difficulty(RNG) : diff
   //["perlous", "dangerous", "unsafe", "safe"]
   let safe = [30, 40, 50, 70][safety]
 
@@ -185,27 +154,23 @@ const SetExplore = (where,safety,diff)=>{
     , skills = [];
   const focus = {
     'Cypher'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Design', 'Puzzle'] : ['Curse'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Design', 'Puzzle','Hidden Trails'] : ['Curse'])
       return what
     },
     'Mechanism'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Lock'] : ['Trap'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Device'] : ['Trap'])
       return what
     },
     'Monster'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Thieves'] : ['Attack'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Thieves','Track'] : ['Attack'])
       return what
     },
     'Obstacle'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Labor'] : ['Precarious'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Labor'] : ['Precarious','Environment'])
       return what
     },
     'People'() {
       let what = RNG.pickone(Likely(safe, RNG) ? ['Trade', 'Treaty'] : ['Defamation'])
-      return what
-    },
-    'Wilderness'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Hidden Trails','Track'] : ['Environment'])
       return what
     }
   }
@@ -218,27 +183,22 @@ const SetExplore = (where,safety,diff)=>{
   }
 
   //exploration challenges  
-  const challenges = ['Cypher', 'Monster', 'Mechanism', 'People', 'Obstacle', 'Wilderness']
+  const challenges = ['Cypher', 'Monster', 'Mechanism', 'People', 'Obstacle']
   const types = {
-    "creature": [0, 5, 0, 1, 2, 2],
-    "encounter": [0, 5, 0, 1, 2, 2],
-    "dungeon": [1, 2, 2, 1, 2, 2],
-    "area": [0, 2, 0, 1, 2, 5],
-    "wilderness": [0, 2, 0, 1, 2, 5],
-    "faction": [2, 1, 0, 7, 0, 0],
-    "diety": [3, 1, 1, 5, 0, 0],
-    "hazard": [1, 1, 0, 0, 4, 4],
-    "obstacle": [1, 1, 0, 0, 4, 4],
-    "landmark": [1, 2, 2, 4, 0, 1],
-    "outpost": [2, 1, 2, 5, 0, 0],
-    "resource": [2, 2, 0, 3, 1, 2],
-    "ruin": [1, 2, 2, 2, 2, 1],
-    "settlement": [2, 1, 1, 6, 0, 0],
+    "creature": [1, 5, 0, 1, 3],
+    "encounter": [1, 5, 0, 1, 3],
+    "dungeon": [2, 2, 2, 1, 3],
+    "wilderness": [2, 2, 0, 1, 5],
+    "faction": [2, 1, 0, 7, 0],
+    "diety": [3, 1, 1, 5, 0],
+    "hazard": [2, 1, 0, 0, 7],
+    "landmark": [1, 2, 2, 4, 1],
+    "resource": [3, 2, 0, 3, 2],
+    "settlement": [2, 1, 1, 5, 1],
   }
 
   // assign challenge group, difficulty, action 
   let data = ExArray(types[where])
-  let reward = Rewards(where, diff)
   let short = [data[0], "[" + data[1] + "]", data[3] + ";", "Find:", reward[0]].join(" ")
 
   //get actions 
@@ -249,7 +209,7 @@ const SetExplore = (where,safety,diff)=>{
     actions,
     where,
     short,
-    reward
+    diff
   }
 }
 
@@ -294,4 +254,4 @@ const Jobs = (who=null,where)=>{
   }
 }
 
-export {SetExplore, Jobs}
+export {Exploration, Jobs}

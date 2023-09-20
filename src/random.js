@@ -13,7 +13,7 @@ const Likely = (p=50,RNG=chance)=>RNG.bool({
   likelihood: p
 })
 const ZeroOne = (RNG=chance)=>RNG.bool() ? 1 : 0
-const Difficulty = (RNG=chance)=>RNG.weighted([0, 1, 2, 3, 4, 5], [30, 30, 20, 13, 5, 2])
+const Difficulty = (RNG=chance)=>RNG.weighted([0, 1, 2, 3, 4], [30, 35, 23, 10, 2])
 
 
 const WeightedString = (str,RNG=chance)=>{
@@ -52,4 +52,9 @@ const BuildArray = (n,f)=>Array.from({
   length: n
 }, f)
 
-export {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, SpliceOrPush, WeightedString, chance}
+// return string with 1st char capitalized
+function capitalize(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+export {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, SpliceOrPush, WeightedString, capitalize, chance}

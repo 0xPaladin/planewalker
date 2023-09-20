@@ -6,10 +6,10 @@
   Storage - localforage
   https://localforage.github.io/localForage/
 */
-import "../lib/localforage.min.js"
+import "../../lib/localforage.min.js"
 const DB = {}
 DB.Games = localforage.createInstance({
-  name: "Designs"
+  name: "Explorations"
 });
 DB.areas = localforage.createInstance({
   name: "Areas"
@@ -21,8 +21,8 @@ DB.factions = localforage.createInstance({
 /*
   Chance RNG
 */
-import "../lib/chance.min.js"
-import {BuildArray} from "./random.js"
+import "../../lib/chance.min.js"
+import {BuildArray} from "../random.js"
 /*
   SVG
   https://svgjs.dev/docs/3.0/getting-started/
@@ -41,19 +41,20 @@ const html = htm.bind(h);
   App Sub UI
 */
 import*as UI from './UI.js';
-import*as Gen from './generate.js';
+import*as Gen from '../generate.js';
 
 /*
   Game Object 
 */
 let Game = {
   "id": "",
-  "mode" : "Builder",
+  "mode" : "Explorer",
   "name": "",
   "time": 0,
   //days 
   "coin": 2000,
   //gold 
+  "known" : new Set(),
   "factions": new Set(),
   "areas": new Set(),
   "characters": new Set(),
@@ -134,8 +135,11 @@ class App extends Component {
     BuildArray(3, ()=>Object.values(Gen.POI.OuterPlanes).forEach(p=>MakeRegion([p.name, RNG.pickone(p.layers)].join(","))))
     BuildArray(5, ()=>Object.values(Gen.POI.InnerPlanes).forEach(p=>MakeRegion([p.name, p.name].join(","))))
 
+    //Primes 
+    BuildArray(3, ()=> new Gen.PrimeWorld(this,{id:RNG.hash()}))
+
     //add pantheons 
-    BuildArray(2, ()=> new Gen.Pantheon(this,{id:RNG.hash()}))
+    BuildArray(4, ()=> new Gen.Pantheon(this,{id:RNG.hash()}))
     
     //load factions 
     let factions = [[], []]
@@ -156,22 +160,31 @@ class App extends Component {
     }))
 
     //set all portals 
-    this.regions.forEach(r=>r.portal = chance)
+    this.regions.forEach(r=>r.portal = RNG)
 
     //update game  
     Game.id = id
     Game.name = Gen.Names.Region(id).short
 
+    this.setExplorers()
+
     console.log(this.areas, this.factions, this.characters)
     this.refresh()
   }
 
+  setExplorers () {
+    let RNG = new Chance([Game.id,Math.floor(Game.time/7)].join("."))
+    BuildArray(5,()=> new Gen.Explorer(this,{id:RNG.hash()}))
+  }
+
   save(_set,id) {
     //first save to game 
-    Game[_set].add(id)
+    if(_set){
+      Game[_set].add(id)
+    }
 
     //now save whole game 
-    let sets = ["factions", "areas"]
+    let sets = ["factions", "areas", "characters"]
     let save = {}
 
     //save game handle sets 
@@ -195,6 +208,8 @@ class App extends Component {
     this.generate(id)
     //write state 
     Object.keys(Game).forEach(k=> Game[k] = sets.includes(k) ? new Set(game[k]) : game[k])
+
+    this.setExplorers()
 
     //load saved 
     sets.forEach(s => Game[s].forEach(async id => {
@@ -319,6 +334,7 @@ class App extends Component {
         <h1 class="pointer underline-hover mv2" onClick=${()=>this.show = "Main"}>Planewalker</h1>
       </div>
       <div class="flex items-center">
+        <div class="ba mh1 pa1">${Game.coin}g Day ${Game.time}</div>
         <input type="text" value=${Game.name} onChange=${(e)=>Game.name = e.target.value}>${Game.name}</input>
         ${!["Factions", "Planes", "Pantheons", "Explorers", "areas", "factions"].includes(view) ? "" : html`<div class="pointer f5 link dim ba bw1 pa1 dib black mh1" onClick=${()=>this.show = "Main"}>Home</div>`}
       </div>

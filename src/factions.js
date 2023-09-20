@@ -380,6 +380,7 @@ class Faction {
   */
 
   modify(what, val) {
+    //modify 
     if (what == "plot") {
       this.state.plot[0] = [WeightedString(PLOTS[this.front.type]), 0, chance.pickone([4, 8, 12])]
     } else if (what == "plot+") {
@@ -399,10 +400,11 @@ class Faction {
       this.rank += val 
     } else if (what == "delete") {
       DB.removeItem(this.id)
+      this.app.game.factions.delete(this.id)
       delete this.app.factions[this.id]
     }
 
-    this.app.refresh()
+    this.app.save(what == "delete" ? null : "factions",this.id)
   }
 
   completePlot() {
@@ -522,8 +524,13 @@ class Faction {
 
   get UI () {
     let {app, generated} = this 
-    let {html} = app 
+    let {html,game} = app 
 
+    let OptionList = [["Increase Rank",()=>this.modify("rank",1)],["Decrease Rank",()=>this.modify("rank",-1)],["New Plot",()=>this.modify("plot")],["Progress Plot",()=>this.modify("plot+",1)],["Foil Plot",()=>this.modify("plot+",-1)],["Delete",()=>this.modify("delete")]]
+    if(game.mode == "Shaper"){
+      OptionList.push(["Random Minion",()=>this.random("minion",{rank:0})],["Random Soldier",()=>this.random("minion",{rank:1})],["Random Elite",()=>this.random("minion",{rank:2})],["Random Leader",()=>this.random("minion",{rank:3})])
+    }
+    
     //splice generated objects 
     const GenSplice = (i)=>{
       generated.splice(i, 1)
@@ -539,17 +546,7 @@ class Faction {
         <div class="dropdown pointer">
           <div class="underline-hover b white bg-light-blue br2 pa1 ml2">Options</div>
           <div class="dropdown-content bg-white ba bw1 pa1">
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>app.save("factions",this.id)}>Save</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:0})}>Random Minion</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:1})}>Random Soldier</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:2})}>Random Elite</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random("minion",{rank:3})}>Random Leader</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",1)}>Increase Rank</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("rank",-1)}>Decrease Rank</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot")}>New Plot</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot+",1)}>Progress Plot</div>
-            <div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.modify("plot+",-1)}>Foil Plot</div>
-            <div class="link pointer dim underline-hover red ma1" onClick=${()=>this.modify("delete")}>Delete</div>
+            ${OptionList.map(o => html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${o[1]}>${o[0]}</div>`)}
           </div>
         </div>
       </div>

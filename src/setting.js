@@ -4,7 +4,7 @@ const InnerPlanes = {
     "layers": ["Ethereal"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
-    "portals": "Inner,Outlands/7,3",
+    "portals": "Inner,Outlands,Astral/5,2.5,2.5",
     "tags": ["NN","inner"],
     "terrain" : {
       "base" : "islands/1",
@@ -19,7 +19,7 @@ const InnerPlanes = {
     "layers": ["Plane of Air"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
-    "portals": "Ethereal,Plane of Water,Plane of Fire,Plane of Earth,Outlands/3,2,2,1,2",
+    "portals": "Ethereal,Plane of Water,Plane of Fire,Plane of Earth,Outlands,Astral/3,2,2,1,1,1",
     "tags": ["NN","inner"],
     "terrain" : {
       "base" : "islands/1",
@@ -41,7 +41,7 @@ const InnerPlanes = {
     "layers": ["Plane of Earth"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
-    "portals": "Ethereal,Plane of Water,Plane of Fire,Plane of Air,Outlands/3,2,2,1,2",
+    "portals": "Ethereal,Plane of Water,Plane of Fire,Plane of Air,Outlands,Astral/3,2,2,1,1,1",
     "tags": ["NN","inner"],
     "terrain" : {
       "id" : "Plane of Earth",
@@ -64,7 +64,7 @@ const InnerPlanes = {
     "layers": ["Plane of Fire"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
-    "portals": "Ethereal,Plane of Air,Plane of Earth,Plane of Water,Outlands/3,2,2,1,2",
+    "portals": "Ethereal,Plane of Air,Plane of Earth,Plane of Water,Outlands,Astral/3,2,2,1,1,1",
     "tags": ["NN","inner"],
     "terrain" : {
       "base" : "islands/1",
@@ -83,7 +83,7 @@ const InnerPlanes = {
     "layers": ["Plane of Water"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
-    "portals": "Ethereal,Plane of Air,Plane of Earth,Plane of Fire,Outlands/3,2,2,1,2",
+    "portals": "Ethereal,Plane of Air,Plane of Earth,Plane of Fire,Outlands,Astral/3,2,2,1,1,1",
     "tags": ["NN","inner"],
     "terrain" : {
       "base" : "islands/1",
@@ -108,18 +108,18 @@ const OuterPlanes = {
     "layers": ["Outlands"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
-    "portals": "Outer/1",
+    "portals": "Outer,Astral/3,1",
     "tags": ["NN","outer"],
     "encounters": {
       "base": "Rilmani,Celestial,Fiend,Modron,Elemental,Fey,Beast,Monster/30,5,5,2,5,3,30,20"
     }
   },
-  "Astral Plane": {
-    "name": "Astral Plane",
-    "layers": ["Astral Plane"],
+  "Astral": {
+    "name": "Astral",
+    "layers": ["Astral"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
-    "portals": "Outer/1",
+    "portals": "Inner,Outer/1,2",
     "tags": ["NN","outer"],
   },
   //Planes of Law
@@ -128,7 +128,6 @@ const OuterPlanes = {
     "layers": ["Lunia", "Mercuria", "Venya", "Solania", "Mertion", "Jovar", "Chronias"],
     "alignment": ["lawful", "good"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["LG","outer"],
     "encounters": {
       "base": "Archon,Aasimon,Animal,Dragon/4,1,4,1"
@@ -139,7 +138,6 @@ const OuterPlanes = {
     "layers": ["Abellio", "Buxenus"],
     "alignment": ["lawful"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["LN", "LG","outer"],
     "encounters": {
       "base": "Archon,Celestial,Elemental,Dragon,Animal/10,30,10,5,45"
@@ -150,7 +148,6 @@ const OuterPlanes = {
     "layers": ["Mechanus"],
     "alignment": ["lawful"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["LN","outer"],
     "encounters": {
       "base": "Modron,Archon,Dragon,Construct,Elemental,Beast/30,5,5,15,10,35"
@@ -161,7 +158,6 @@ const OuterPlanes = {
     "layers": ["Nessus", "Avalas", "Thuldanin", "Tintibulus"],
     "alignment": ["evil", "lawful"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["LE", "LN","outer"],
     "encounters": {
       "base": "Fiend,Undead,Beast,Magical Beast/2,2,3,3"
@@ -172,7 +168,6 @@ const OuterPlanes = {
     "layers": ["Avernus", "Dis", "Minauros", "Phlegethos", "Stygia", "Malboge", "Maladomini", "Caina", "Nessus"],
     "alignment": ["evil", "lawful"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["LE","outer"],
     "encounters": {
       "base": "Baatezu,Fiend,Dragon,Undead,Beast,Magical Beast,Plant/40,5,10,5,20,15,5"
@@ -184,7 +179,6 @@ const OuterPlanes = {
     "layers": ["Arvandor", "Ossa", "Pelion"],
     "alignment": ["good"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["CG","outer"],
     "encounters": {
       "base": "Eladrin,Fey,Beast,Magical Beast,Plant/30,20,20,20,10"
@@ -195,7 +189,6 @@ const OuterPlanes = {
     "layers": ["Asgard", "Muspelheim", "Nidavellir"],
     "alignment": ["good", "neutral"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["CG", "CN","outer"],
     "encounters": {
       "base": "Eladrin,Giant,Fey,Beast,Magical Beast/1,1,1,1,1"
@@ -206,7 +199,6 @@ const OuterPlanes = {
     "layers": ["Limbo"],
     "alignment": ["neutral"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["CN","outer"],
     "encounters": {
       "base": "Slaad,Tanar'ri,Elemental,Beast,Ooze/4,1,1,3,1"
@@ -217,7 +209,6 @@ const OuterPlanes = {
     "layers": ["Pandesmos", "Cocytus", "Phlegethon", "Agathion"],
     "alignment": ["evil"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["CN", "CE","outer"],
     "encounters": {
       "base": "Fiend,Animal,Vermin,Ooze,Undead,Aberration/2,1,2,2,2,1"
@@ -228,7 +219,6 @@ const OuterPlanes = {
     "layers": ["Layer of Infinite Portals"],
     "alignment": ["chaotic", "evil"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["CE","outer"],
     "encounters": {
       "base": "Tanar'ri,Fiend,Undead,Beast,Aberration/50,10,15,20,5"
@@ -240,7 +230,6 @@ const OuterPlanes = {
     "layers": ["Amoria", "Eronia", "Belierin", "Thalasia"],
     "alignment": ["good"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["NG","outer"],
     "encounters": {
       "base": "Guardinal,Celestial,Animal,Dragon/4,1,4,1"
@@ -251,7 +240,6 @@ const OuterPlanes = {
     "layers": ["Dothion", "Shurrock"],
     "alignment": ["good"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["LG", "NG","outer"],
     "encounters": {
       "base": "Celestial,Dragon,Animal/3,1,6"
@@ -262,7 +250,6 @@ const OuterPlanes = {
     "layers": ["Krigala", "Brux", "Karasuthra"],
     "alignment": ["good"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["NG", "CG","outer"],
     "encounters": {
       "base": "Animal,Plant,Celestial,Fey,Elemental/5,2,1,1,1"
@@ -273,7 +260,6 @@ const OuterPlanes = {
     "layers": ["Othrys", "Cathrys", "Minethys", "Colothys", "Porphatys", "Agathys"],
     "alignment": ["evil"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["NE", "CE","outer"],
     "encounters": {
       "base": "Fiend,Undead,Giant,Aberration,Beast,Monster/2,1,2,1,2,2 "
@@ -284,7 +270,6 @@ const OuterPlanes = {
     "layers": ["Oinos", "Nifleim", "Pluton"],
     "alignment": ["evil"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["NE","outer"],
     "encounters": {
       "base": "Yugoloth,Fiend,Undead,Giant,Beast,Monster/2,1,2,1,2,2"
@@ -295,7 +280,6 @@ const OuterPlanes = {
     "layers": ["Khalas", "Chamada", "Mungoth", "Krangath"],
     "alignment": ["evil"],
     "display": "PerilousShores",
-    "portals": "Outlands/1",
     "tags": ["LE", "NE","outer"],
     "encounters": {
       "base": "Yugoloth,Fiend,Beast,Monster/4,2,2,2"

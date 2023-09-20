@@ -157,6 +157,7 @@ const Rarity = {
   'Giant': '//Fire Giant,Stone Giant,Hill Giant/Cyclops,Ettin,Frost Giant,Cloud Giant,Storm Giant/',
   'People': 'Human,Elf,Dwarf,Gnome,Halfling,Goblin,Kobold,Orc/Lizardfolk,Drow,Bugbear,Gnoll,Hobgoblin,Ogre,Troll/Aarakocra,Centaur,Dragon-kin,Grippli,Kenku,Myconid,Thri-kreen,Wemic,Harpy,Minotaur,Gargoyle,Locathah,Sahuagin,Sea Fey,Triton,Merfolk/Doppelganger,Treant/',
   'Folk': '_animal/_chimera///',
+  'Human': 'Human////',
   'PCs': 'Human,Elf,Dwarf/Gnome,Halfling,Goblin,Kobold,Orc,Bugbear,Lizardfolk,Hobgoblin/Air Genasi,Earth Genasi,Fire Genasi,Water Genasi,Aasimar,Bariaur,Githzerai,Tiefling,Drow,Gnoll,Centaur,Dragon-kin//',
   //Outsiders 
   'Aasimon': '/Agathinon//Light Aasimon,Deva,Planetar/Solar',
@@ -190,6 +191,7 @@ const Threat = {
   'Giant': '//Cyclops,Ettin,Hill Giant/Fire Giant,Frost Giant,Stone Giant,Cloud Giant/Storm Giant',
   'People': 'Human,Elf,Dwarf,Gnome,Halfling,Goblin,Kobold,Orc,Lizardfolk,Drow,Bugbear,Gnoll,Hobgoblin,Aarakocra,Centaur,Dragon-kin,Grippli,Kenku,Myconid,Thri-kreen,Wemic,Harpy/Ogre,Troll,Doppelganger,Minotaur,Gargoyle/Treant//',
   'PCs': 'Human,Elf,Dwarf,Gnome,Halfling,Goblin,Kobold,Orc,Lizardfolk,Drow,Bugbear,Gnoll,Hobgoblin,Centaur,Dragon-kin////',
+  'Human': 'Human////',
   'Folk': '_animal,_chimera////',
   //Outsiders 
   'Aasimon': '//Agathinon,Light Aasimon/Deva/Planetar,Solar',
@@ -333,6 +335,9 @@ const Generators = {
   /*
     Major generators 
   */
+  Human () {
+    return ["People","Human",[]] 
+  },
   Folk(RNG=chance,o={}) {
     let animal = Generators[RNG.pickone(o.base)](RNG)
     let what = capitalize(animal)+"-folk"
@@ -358,13 +363,15 @@ const Generators = {
   }
 }
 
-const Format = (id,opts,[base,short,tags])=>{
+const Format = (id,rank,nameBase,opts,[base,short,tags])=>{
   if(!tags.includes("aquatic") && IsAquatic.includes(short)){
     tags.push("aquatic")
   }
   
   return {
     id,
+    rank,
+    nameBase,
     opts,
     base,
     _short : short,
@@ -397,7 +404,7 @@ const StringGenerate = {
     return [what, where[what]]
   },
   Prime(RNG=chance, where) {
-    let what = WeightedString('People,Folk,Animal,Aberration,Dragon,Undead,Outsider/50,20,10,5,5,5,5',RNG)
+    let what = Likely(75,RNG) ? WeightedString('People,Folk,Animal,Aberration,Dragon,Undead,Outsider/50,20,10,5,5,5,5',RNG) : 'Human'
     return what == "Outsider" ? StringGenerate[RNG.pickone(["Celestial","Fiend"])](RNG,where) : [what, where[what]]
   },
   Petitioner(RNG=chance, where) {
@@ -419,7 +426,7 @@ const ByRarity = (o={})=>{
   let id = o.id || chance.hash()
   let RNG = new Chance(id)
   let {rarity, str=null} = o
-  rarity = rarity === undefined || rarity === null ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : rarity
+  let rank = rarity = rarity === undefined || rarity === null ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : rarity
 
   //pick from list 
   let type = o.what != null ? o.what : WeightedString("Petitioner,Planar,Beast,Monster,Celestial,Fiend,Elemental/30,15,20,10,10,10,5",RNG)
@@ -429,16 +436,18 @@ const ByRarity = (o={})=>{
   gen = Generators[gen] ? gen : Details.Outsiders.Outsiders.includes(gen) ? "Outsider" : gen 
   type = _outsider ? _outsider : type 
 
+  let nameBase = RandBetween(0,42,RNG)
+
   let opts = Object.assign({id,type},Split(rarity, _str))
   //Finish up using the unique genrators 
-  return Format(id,opts,Generators[gen](RNG, opts))
+  return Format(id,rank,nameBase,opts,Generators[gen](RNG, opts))
 }
 
 const ByThreat = (o={})=>{
   let id = o.id || chance.hash()
   let RNG = new Chance(id)
   let {threat, str=null} = o
-  threat = threat === undefined || threat === null ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : threat
+  let rank = threat = threat === undefined || threat === null ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : threat
 
   //pick from list 
   let type = o.what != null ? o.what : WeightedString("Petitioner,Planar,Beast,Monster,Celestial,Fiend,Elemental/30,15,20,10,10,10,5",RNG)
@@ -447,9 +456,11 @@ const ByThreat = (o={})=>{
   let[gen,_str] = o.str != null ? [type, o.str] : Threat[type] ? [type, Threat[type]] : StringGenerate[type](RNG, Threat)
   gen = Details.Outsiders.Outsiders.includes(gen) ? "Outsider" : gen 
 
+  let nameBase = RandBetween(0,42,RNG)
+
   let opts = Object.assign({id,threat,type},Split(threat, _str))
   //Finish up using the unique genrators 
-  return Format(id,opts,Generators[gen](RNG, opts))
+  return Format(id,rank,nameBase,opts,Generators[gen](RNG, opts))
 }
 
 

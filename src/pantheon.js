@@ -42,11 +42,11 @@ const Domains = {
 const Form = ["Imitative", "Hybrid", "Dramatic Coloration", "Multi-limbed", "Elemental", "Symbolic", "Abstract", "Combined"]
 
 const Aligment = {
-  "good": [["evil", "chaotic", "neutral", "lawful", "good"], [1, 2, 2, 2, 5]],
-  "lawful": [["evil", "chaotic", "neutral", "lawful", "good"], [2, 1, 2, 5, 2]],
+  "good": [["evil", "chaotic", "neutral", "lawful", "good"], [0, 2, 3, 2, 5]],
+  "lawful": [["evil", "chaotic", "neutral", "lawful", "good"], [2, 0, 3, 5, 2]],
   "neutral": [["evil", "chaotic", "neutral", "lawful", "good"], [1, 2, 6, 2, 1]],
-  "chaotic": [["evil", "chaotic", "neutral", "lawful", "good"], [2, 7, 0, 1, 2]],
-  "evil": [["evil", "chaotic", "neutral", "lawful", "good"], [5, 2, 2, 2, 1]]
+  "chaotic": [["evil", "chaotic", "neutral", "lawful", "good"], [2, 7, 1, 0, 2]],
+  "evil": [["evil", "chaotic", "neutral", "lawful", "good"], [5, 2, 3, 2, 0]]
 }
 
 import*as Names from "./names.js"
@@ -96,17 +96,23 @@ class Diety extends Faction {
 
     //home region 
     let _all = app.planes.filter(p=>p.tags.includes(al)).map(_p => _p.children).flat()
-    let _outlands = app.planes.find(p=>p.name == "Outlands").children
-    let _home = RNG.pickone(RNG.pickone([_outlands,_all]))
+    let _home = RNG.pickone(_all)
     this._home = _home.id   
     //add a claim 
     this.addClaim(_home)
-
+    
     if (pantheon) {
       this.pantheon.children.push(this)
       
       //update if provided 
       this.formSpecial = this.pantheon.form.includes("Hybrid") ? [RNG.natural(),"Animal"] : this.pantheon.form.includes("Elemental") ? RNG.pickone(RNG.pickone(Details.element).split("/")) : null
+    }
+
+    //add claims to primes 
+    if(app.primes.length > 0) {
+      let primes = pantheon ? this.pantheon.primes : app.primes
+      let pr = RNG.shuffle(RNG.pickone(primes).land).slice(0,minor > 0 ? 3 : 1)
+      pr.forEach(r => this.addClaim(r))
     }
 
     //mythos figures 
@@ -223,6 +229,9 @@ class Pantheon {
 
     //save to app 
     this.app.factions[this.id] = this
+
+    //add prime claims 
+    this.primes = app.primes.length == 0 ? [] : RNG.shuffle(app.primes).slice(0,RandBetween(1,2))
 
     //make dieties
     let total = SumDice("2d4+1", RNG);
