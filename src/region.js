@@ -171,7 +171,7 @@ const PerilousShores = (region)=>{
 /*
   Features 
 */
-import*as Encounters from "./encounters.js"
+import {Encounter, Professions} from "./encounters.js"
 import*as Details from "./data.js"
 
 const Essence = (RNG)=>RNG.pickone(Object.keys(Details.essence))
@@ -260,22 +260,21 @@ const Features = {
   },
   encounter(RNG, region) {
     let id = RNG.hash()
-    const specifics = region.encounter({
+    const enc = region.encounter({
       id
-    })[1]
-    let {rank, lair, short} = specifics
+    })
 
     return {
       id,
-      specifics,
-      text: lair + ": " + short,
       siteType: "origin unknown",
       scale: RNG.weighted([1, 2, 3], [5, 4, 1]),
-      who: short,
-      hasJobs: lair == "Camp",
-      difficulty: rank,
       essence: Essence(RNG),
-    }
+      difficulty: enc.rank,
+      hasJobs: enc.lair == "Camp",
+      encounter : enc, 
+      get short () { return this.encounter.short},
+      get text () { return `${this.encounter.lair}: ${this.encounter.short}`}
+    } 
   },
   settlement(RNG, {_safety=0, alignment="neutral", water=false}) {
     let names = ["Hamlet", "Village", "Keep", "Town", "City"]
@@ -334,7 +333,6 @@ class Region extends Area {
 
     //state that is saved 
     this.state = {
-      known: new Set(),
       portal: null,
       //people
       f: new Map(),
@@ -380,7 +378,11 @@ class Region extends Area {
     this.pop = Math.round(this.s * size * 5.8)
     //add people for every settlement 
     let nS = this.lookup("settlement").length
-    BuildArray(nS > 1 ? nS : 1, ()=>this.state.f.set(RNG.natural(), ["people"]))
+    if(nS == 0) {
+      this.state.f.set(RNG.natural(), ["settlement"])
+      nS++
+    }
+    BuildArray(nS, ()=>this.state.f.set(RNG.natural(), ["people"]))
 
     //set children - adds all features / people 
     this.children = [...this.state.f.entries()].map(([key,val])=>this.genFeature(key, ...val))
@@ -412,7 +414,7 @@ class Region extends Area {
   }
 
   get characters() {
-    return this.app.explorers.filter(e=>e.location.id == this.id)
+    return this.app.explorers.filter(e=>e.location.region.id == this.id)
   }
 
   get portal() {
@@ -458,10 +460,8 @@ class Region extends Area {
     "settlement" : ["Explore","Get a Job","Generate a NPC"]
     */
     if (gen == "Explore") {
-      let _where = data == -1 ? "settlement" : data.what ? data.what : data.class[0]
-      let diff = data == -1 ? null : data.difficulty
       //generate an explore value 
-      generated.push(["Explore", app.Rewards(this, Quests.Exploration(_where, this._safety, diff))])
+      generated.push(["Explore", this.explore(data)])
       app.setState({
         generated
       })
@@ -471,15 +471,16 @@ class Region extends Area {
         generated
       })
     } else if (gen == "Generate a NPC") {
-      generated.push(this.NPC(data))
+      generated.push(["NPC",this.NPC(data)])
       app.setState({
         generated
       })
     } else if (gen == "Random Encounter") {
-      generated.push(this.encounter({
+      let enc = this.encounter({
         useLocal: true,
         data
-      }))
+      })
+      generated.push(["Encounter",enc])
       app.setState({
         generated
       })
@@ -550,15 +551,11 @@ class Region extends Area {
     let res = null
 
     if (what == "people") {
-      let[type,p] = this.encounter({
+      res = this.encounter({
         id,
         what: this._plane ? "Petitioner" : "Prime"
       })
-      res = Object.assign(p, {
-        id,
-        what,
-        text: "People: " + p.short
-      })
+      res.what = "people"
     } else {
       const RNG = new Chance(id)
 
@@ -668,24 +665,11 @@ class Region extends Area {
     this.state.portal = [region.id, timing, key]
   }
 
-  NPC(data, RNG=chance) {
-    let people = null
-    let npc = this.app.gen.Encounters.NPCs.common(RNG)
-
-    if (data.base) {
-      people = data
-    } else if (data.front) {
-      people = data.minion(RNG)
-    } else {
-      people = this.lookup("people").length > 0 ? RNG.pickone(this.lookup("people")) : this.encounter({
-        id: RNG.natural(),
-        what: "Planar"
-      })[1]
-    }
-    //update people
-    npc.people = people
-
-    return ["NPC", npc]
+  explore (where) {
+    let Gen = this.app.gen
+    let _where = where.what ? where.what : where.class[0]
+    let diff = where.difficulty || null
+    return Gen.Rewards(this, Quests.Exploration(_where, this._safety, diff))
   }
 
   /*
@@ -694,12 +678,11 @@ class Region extends Area {
 
   encounter(o={}) {
     let RNG = new Chance(o.id || chance.hash())
-    let {i=-1, threat=null, rarity=RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5])} = o
 
     //use local encounters 
-    let local = this.lookup("encounter").map(e=>e.specifics).concat(this.lookup("people"))
-    if (o.useLocal && local.length > 0 && Likely(70, RNG)) {
-      return ["Encounter", o.i == undefined ? RNG.pickone(local) : this.lookup("encounter")[o.i].specifics]
+    let local = this.lookup("encounter").map(e=>e.encounter).concat(this.lookup("people"))
+    if (o.useLocal && local.length > 0 && Likely(85, RNG)) {
+      return RNG.pickone(local)
     }
 
     //pull encounter from parent plane - always Planar, Petitioner, Beast... 
@@ -712,16 +695,34 @@ class Region extends Area {
     //see if encounters provides a specific rarity string 
     let str = encounters[what]
 
-    let opts = Object.assign({
-      id: o.id || RNG.seed,
-      rarity,
-      threat,
+    let opts = Object.assign(o,{
       what,
       str
     })
-    let res = threat != null ? Encounters.ByThreat(opts) : Encounters.ByRarity(opts)
+
     //set basic result
-    return ["Encounter", res]
+    return Encounter(opts)
+  }
+
+  NPC(o={}) {
+    let RNG = new Chance(o.id || chance.hash())
+    o.trade = o.trade || "random"
+    
+    //use local encounters 
+    let local = this.lookup("encounter").map(e=>e.encounter).concat(this.lookup("people"))
+    let lData = local.length > 0 && Likely(85, RNG) ? RNG.pickone(local).data.slice() : null
+    
+    let npc = this.encounter(Object.assign({},o))
+    //reasign data and profession if picked from base 
+    if(!o.what && lData){
+      let prof = npc.data[4]
+      npc.data = lData.slice()
+      npc.data[0] = o.id || RNG.seed
+      npc.data[3] = o.rarity === undefined ? npc.data[3] : o.rarity
+      npc.data[4] = prof
+    }
+    
+    return npc
   }
 
   /*
@@ -732,10 +733,11 @@ class Region extends Area {
     return MarketUI(this)
   }
 
+  //supports UI by pulling a list of viewable features 
   view() {
     let html = this.app.html
     let {mode, known} = this.app.game
-    const isKnown = this.children.filter(c=>mode == "Builder" || known.has(Hash(c.id)) || ["wilderness", "settlement"].includes(c.what)).map(c=>c.id)
+    const isKnown = this.children.filter(c=>mode == "Builder" || known.has(c.id) || 'wilderness,settlement,people'.includes(c.what)).map(c=>c.id)
 
     //Make a format for dropdown options - optins,text,data 
     let res = []
@@ -743,10 +745,10 @@ class Region extends Area {
     res.push([this.portal.text, [this.portal]])
 
     //always add settlement / people data 
-    let settlements = html`
+    let sHtml = html`
     <div>Settlements</div>
     <div class="mh2">People: ${this.lookup("people").map(p=>p.short).join(", ")}</div>`
-    res.push([settlements, this.lookup("settlement")])
+    res.push([sHtml, this.lookup("settlement")])
 
     //pull for display - but don't show what isn't known 
     let f = ["resource", "landmark", "hazard", "encounter", "dungeon", "faction"]
@@ -775,15 +777,15 @@ class Region extends Area {
 
     //ui for each explorer 
     const explorer = (e)=>html`
-    <div>
-      <span class="b pa1">${e.name}</span>
-      <span class="mh1">@ ${e.atFeature.text}</span>
-    </div>
-    <div class="flex items-center">
-      <select class="w-100 pa1" value=${toGenerate} onChange=${(e)=>this.app.updateState("toGenerate", e.target.value)}>
-        ${e.regionOptions.map((o,i)=> html`<option value=${i}>${e.regionOptions[i][1]}</option>`)}
-      </select>
-      <div class="pointer dim b white bg-gray br2 pa1" onClick=${()=> e.regionAct(e.regionOptions[toGenerate])}>Go</div>
+    <div class="flex items-center justify-between pa1 bb">
+      <div class="dropdown">
+        <div class="${e.regionOptions.length > 0 ? "bg-green" : "bg-gray"} br2 pointer b white underline-hover pa1 ph2">${e.name}</div>
+        <div class="dropdown-content bg-white ba bw1 pa1">
+          ${e.regionOptions.map(o=> html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>e.regionAct(o)}>${o[1]}</div>`)}
+        </div>
+      </div>
+      <div>@ ${e.location.atFeature.text}</div>
+      <div>${e.coin}g / ${e.health}♥</div>
     </div>
     `
 
@@ -801,51 +803,25 @@ class Region extends Area {
   }
 
   BuilderUI() {
-    let {html, activeFactions, game} = this.app
-
-    //create feature uptions 
-    //core options 
-    const options = ["Random Encounter", "Explore", "Remove"]
-
-    //Make a format for dropdown options - optins,text,n,data 
-    let res = []
-    //always push wilderness and portal 
-    res.push(...this.lookup("wilderness").map(c=>[["Random Encounter", "Explore"], c.text, 1, c]))
-    res.push([["New Portal"], this.portal.text, 1, this.portal])
-
-    //always add settlement / people data 
-    let ppl = this.lookup("people")
-
-    let settlements = html`
-    <div>Settlements</div>
-    <div class="mh2">People: ${ppl.map(p=>p.short).join(", ")}</div>
-    `
-    res.push([["View Market", "Explore", "Get a Job", "Generate a NPC", "Remove People"], settlements, 1, -1])
-
-    //pull for display 
-    let _resource = this.lookup("resource")
-      , _lmark = this.lookup("landmark")
-      , _haz = this.lookup("hazard");
-
-    //handle compact data style 
-    if (_resource.length > 0) {
-      res.push([options, "Resources: " + _resource.map(c=>c.short).join(", "), 1, _resource])
-    }
-    if (_lmark.length > 0) {
-      res.push([options, "Landmarks: " + _lmark.map(c=>c.short).join(", "), 1, _lmark])
-    }
-    if (_haz.length > 0) {
-      res.push([options, "Hazards: " + _haz.map(c=>c.short).join(", "), 1, _haz])
-    }
-
-    res.push(...this.lookup("encounter").map((c,i)=>[options, c.text, 1, c]))
-    res.push(...this.lookup("dungeon").map((c,i)=>[options, c.text, 1, c]))
-    res.push(...this.lookup("faction").map((c,i)=>[!c.hasJobs ? options : ["Explore", "Get a Job", "Generate a NPC", "Remove Faction"], "Faction: " + c.name, 1, c]))
-
-    //create html for header 
-
-    let {generated, show, toGenerate} = this.app.state
+    let {html, game, activeFactions} = this.app
+    let {show,toGenerate} = this.app.state
     let view = show.split(".")
+
+    //create feature options 
+    const options = {
+      "wilderness" : ["Random Encounter", "Explore"],
+      "portal" : ["New Portal"],
+      "settlement" : ["View Market", "Explore", "Get a Job", "Generate a NPC", "Remove People"],
+      "faction" : ["Explore", "Get a Job", "Generate a NPC", "Remove Faction"]
+    }
+
+    let {isKnown, features} = this.view()
+    features.forEach(f => {
+      let what = f[1][0].what
+      f.push(options[what] || ["Random Encounter", "Explore", "Remove"])
+    })
+
+    
     //things to add to the region 
     const addTo = ["People", "Resource", "Landmark", "Hazard", "Encounter", "Dungeon", "Faction"]
 
@@ -880,7 +856,7 @@ class Region extends Area {
 
     return {
       header,
-      features: res
+      features
     }
   }
 
@@ -905,20 +881,20 @@ class Region extends Area {
     </svg>
     `
 
-    const Build = (dOpts,data)=>html`
+    const Build = (opts,data)=>html`
     <div class="dropdown-content bg-white ba bw1 pa1">
-      ${dOpts.map(opt=>html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random(opt, data)}>${opt}</div>`)}
+      ${opts.map(o=>html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>this.random(o, data)}>${o}</div>`)}
     </div>
     `
 
     //handle drowdown for every features 
-    const dropdown = ([text,data])=>html`
+    const dropdown = ([text,data,opts])=>html`
     <div class="pointer dropdown f5 mv1">
       <div class="flex items-center">
         <div class="f6 white link dim dib bg-gray tc br2 pa1" style="min-width:45px;"><span class="hex-marker">⬢</span></div>
         <div class="mh1">${text}</div>
       </div>
-      ${game.mode == "Explorer" ? "" : Build(dOpts, data)}
+      ${game.mode == "Explorer" ? "" : Build(opts, data)}
     </div>
     `
 

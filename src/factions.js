@@ -10,7 +10,7 @@ import {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, Wei
 //Core Data 
 import*as Details from "./data.js"
 //Encounters 
-import*as Encounters from "./encounters.js"
+import {Encounter} from "./encounters.js"
 
 /*
   Data Unique to Factions
@@ -315,7 +315,7 @@ class Faction {
     let [id,what,_rarity=0] = this._form || [null,null,0] 
     let rarity = "PCs,Folk,Aberration,Magical Beast,Vermin".includes(what) ? null : _rarity
     
-    return this._form ? Encounters.ByRarity({id,what,rarity}) : null 
+    return this._form ? Encounter({id,what,rarity}) : null 
   }
 
   get leader () {
@@ -429,7 +429,6 @@ class Faction {
     get minions / forces 
   */
   minion(o={}) {
-    let E = Encounters
     let RNG = new Chance(o.id || chance.hash())
     let threat= o.rank == undefined ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : o.rank
     
@@ -438,23 +437,20 @@ class Faction {
       arr.push(this.form.base == "Outsider" ? this.form.tags[0] : this.form.base)
     }
 
-    //pick the type of minion 
-    let what = arr.length == 0 ? null : RNG.pickone(arr)
-    let res = E.ByThreat({
+    let opts = {
       id : o.id || RNG.seed, 
-      what,
-      threat 
-    })
-
-    let form = this.form 
-    if(form && 'People,PCs,Folk,Giant,Aberration,Dragon,Magical Beast,Elemental'.includes(this._form[1])){
-      res = form  
+      what : arr.length == 0 ? null : RNG.pickone(arr),
+      threat
     }
 
-    //get adventuer class 
-    res.adventurer = threat > 0 ? E.NPCs.adventurer(RNG) : res.base == 'People' ? [E.NPCs.occupation(RNG,WeightedString("Diplomat,Engineer,Explorer,Rogue,Scholar,Soldier/1,1,2,4,1,4",RNG)).short] : null
-
-    return res
+    //get trade/adventuer class 
+    let prof = threat > 0 ? ["adventuer","random"] : res.base == 'People' ? ["trade",WeightedString("Diplomat,Engineer,Explorer,Rogue,Scholar,Soldier/1,1,2,4,1,4",RNG)] : [null]
+    if(prof[0]){
+      opts[prof[0]] = prof[1]
+    }
+    
+    //pick the type of minion 
+    return this.form && 'People,PCs,Folk,Giant,Aberration,Dragon,Magical Beast,Elemental'.includes(this._form[1]) ? this.form : Encounter(opts)
   }
 
   /*
@@ -527,7 +523,7 @@ class Faction {
     let {html,game} = app 
 
     let OptionList = [["Increase Rank",()=>this.modify("rank",1)],["Decrease Rank",()=>this.modify("rank",-1)],["New Plot",()=>this.modify("plot")],["Progress Plot",()=>this.modify("plot+",1)],["Foil Plot",()=>this.modify("plot+",-1)],["Delete",()=>this.modify("delete")]]
-    if(game.mode == "Shaper"){
+    if(game.mode != "Explorer"){
       OptionList.push(["Random Minion",()=>this.random("minion",{rank:0})],["Random Soldier",()=>this.random("minion",{rank:1})],["Random Elite",()=>this.random("minion",{rank:2})],["Random Leader",()=>this.random("minion",{rank:3})])
     }
     

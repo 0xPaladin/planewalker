@@ -2,7 +2,7 @@ var DB = localforage.createInstance({
   name: "Characters"
 });
 
-import {RandBetween, SumDice, Likely,BuildArray, chance} from "../random.js"
+import {RandBetween, SumDice, Likely,BuildArray, Hash, chance} from "../random.js"
 import*as Names from "../names.js"
 
 /*
@@ -217,9 +217,10 @@ const StartingGear = {
   "Rogue": ["Equipment.Documents","Magical"],
   "Wizard": ["Power.Spell","Equipment.Implements"],
 }
-
+const DieRank = ["d4","d6","d8","d10","d12","d14"]
 const XP = [0,6,15,24,36,51,69,90,114,141,171,204,240,279,321,366,414,465,519,576]
-const Cost = [1500,3300,6000,8700,12300,16800,22200,28500,35700,43800,52800,62700,73500,85200,97800,111300,125700,141000,157200,174300]
+//cost in gp - per month 
+const Cost = [150,330,600,870,1230,1680,2220,2850,3570,4380,5280,6270,7350,8520,9780,11130,12570,14100,15720,17430]
 
 class Explorer {
   constructor(app, opts={}) {
@@ -231,104 +232,205 @@ class Explorer {
     this.class = ["explorer"]
 
     this.state = {
+      xp: 0,
       action: 0,
+      health : [2,2], 
       hired : null,
       coin: 0,
       quests: [],
       inventory: [],
+      eq : new Set(),
       mods : [],
     }
 
     let RNG = new Chance(this.id)
 
-    this.level = RNG.pickone([1, 2])
+    //explorer stuff 
+    this._actions = {}
 
     //always generate but overwrite 
-    this.people = app.gen.Encounters.ByRarity({
+    this.people = app.gen.Encounter({
+      id: this.id,
       what: "PCs"
-    }, RNG)
-    this.name = Names.Diety(RNG)
-    this.classes = app.gen.Encounters.NPCs.adventurer(RNG)
-
-    let overwrite = ["people", "name", "level"]
-    overwrite.forEach(k=>this[k] = opts[k] ? opts[k] : this[k])
-
-    //load actions based upon classes 
-    let _act = this._actions = {}
-    this.classes.forEach((c,i) => {
-      //get the initial advance 
-      let advance = ClassAdvance[c][0].split(",")
-      advance.forEach(a => {
-        _act[a] = _act[a] ? _act[a]+1 : 1 
-      })
-
-      //initial inventory
-      StartingGear[c].forEach((item,j) => {
-        let [gear,what] = item.split(".")
-        this.state.inventory.push(app.gen[gear]({id:RNG.natural(),what,rank:1}).data)
-      })
     })
-    //get action count total 
-    let aT = Object.values(_act).reduce((sum,v)=>sum+v,0)
-    while(aT < 7){
-      //only use actions with value less than 2 
-      let pick = RNG.pickone(AllActions.filter(a => _act[a] == undefined || _act[a]<2))
-      _act[pick] = _act[pick] ? _act[pick]+1 : 1 
-      aT++
-    }
+    this.name = Names.Diety(RNG)
+    this._classes = [app.gen.Professions.adventurer(RNG)[0]]
+
+    //add initial Gear
+    StartingGear[this._classes[0]].forEach(g => {
+      let id = RNG.natural()
+      let [gen,what] = g.split(".")
+      this.state.inventory.push(app.gen[gen]({id,what,rank:1}).data.slice()) 
+      this.state.eq.add(id)
+    })
 
     //starting location 
-    let region = RNG.pickone(app.regions.filter(r => r.plane && r.plane[0] == "Outlands"))    
-    this.state.location = region.id
+    let region = RNG.pickone(app.regions.filter(r => r.plane && r.plane[0] == "Outlands"))
+    let fi = region.lookup("settlement")[0].id
+    this.state.location = [region.id,fi]
 
     //save to app 
     this.app.characters[this.id] = this
   }
 
+  /*
+    Simple get functions for view 
+  */
+
+  get level () {
+    let _xp = this.state.xp
+    return XP.reduce((lv,xp,i) => xp <= _xp ? i+1 : lv,1)
+  }
+
+  get classes (){
+    return this._classes
+  }
+  
   get inventory () {
+    //equipped 
+    let eq = this.state.eq
     let gen = this.app.gen 
-    return this.state.inventory.map(d => {
-      let item = this.app.gen[d[0]]({what:d[1]})
+    let mayOffload = this.allies.length > 0 
+    
+    return this.state.inventory.filter(item => item[1] != "NPC").map(d => {
+      let item = this.app.gen[d[1]]({what:d[2]})
       item.data = d 
+      //if power 
+      item.options = !this.isHired ? null : d[1] == "Power" ? item.mayEquip ? ["Equip"] : null : mayOffload ? [eq.has(item.id) ? "Offload" : "Equip"] : null
 
       return item
     })
+  }
+
+  get powersToCrystalize () {
+    let coin = this.state.coin 
+    return coin < 10 ? [] : this.inventory.filter(item => item.data[1] == "Power" && !item.mayEquip)
+  }
+
+  get allies () {
+    let E = this.app.gen.Encounter 
+    return this.state.inventory.filter(item => item[1] == "NPC").map(d => {
+      let npc = E() 
+      npc.data = d 
+
+      return npc
+    })
+  }
+
+  get health () {
+    return this.state.health[0]
+  }
+
+  get coin () {
+    return this.state.coin
+  }
+
+  get load () {
+    let {Bond,Command,Muscle} = this.actions
+    let eq = this.state.eq 
+    let items = this.inventory
+    let allies = this.allies
+    
+    let _load = items.reduce((sum,item)=> eq.has(item.id) ? sum+item.enc : sum,0) 
+    let maxAllies = 1+Math.max(0,Bond[0],Command[0]) 
+
+    return {
+      items : [_load,8 + 2 * Muscle[0]],
+      allies : [allies.length,maxAllies]
+    }
   }
 
   /*
     Location 
   */
   get location () {
-    let id = this.state.location.split(".")[0]
-    return this.app.areas[id]
-  }
-
-  get atFeature () {
-    let r = this.location
-    let [rid,i=-1] = this.state.location.split(".")
-    return i == -1 ? {what:"settlement",text:"settlement"} : i == 0 ? r.portal : r.children.find(c => c.id == i)
+    let [rid,fi] = this.state.location
+    let r = this.app.areas[rid]
+    let atFeature = fi == 0 ? r.portal : r.children.find(c => c.id == fi)
+    return {
+      region : r,
+      atFeature
+    }
   }
 
   get regionOptions () {
-    let r = this.location
-    let {isKnown} = r.view()
-    let _where = this.atFeature
+    let mayAct = this.state.action < this.app.game.time && this.isHired
+    if(!mayAct) {
+      return []
+    }
+    
+    let {region,atFeature} = this.location
+    let {isKnown} = region.view()
     
     //core options 
-    let options = [["Explore","Explore",_where]] 
+    let options = [["Explore","Explore",atFeature]] 
 
-    if(_where.what == "settlement"){
-      options.push(["View Market","View Market"])
+    if(atFeature.what == "settlement"){
+      options.push(["View Market","View Market",atFeature])
     }
 
     //add moves 
-    r.children.forEach(c => {
-      if(c.text != _where.text && isKnown.includes(c.id)){
+    region.children.forEach(c => {
+      if(c.text != atFeature.text && isKnown.includes(c.id) && !"people".includes(c.what)){
         options.push(["Move","Move to "+c.text,c])
       }
     })
 
     return options
+  }
+
+  /*
+    Marktplace Actions / Buying 
+  */
+
+  mayBuy (what,cost) {
+    let coin = this.state.coin
+    let [c,max] = what == "item" ? this.load.items : this.load.allies
+
+    return c < max && coin > cost 
+  }
+
+  marketBuy (item,rid) {
+    //reduce coin 
+    this.state.coin -= item.price
+    //add 
+    let data = item.data.slice()
+    if(data[1] == "NPC") {
+      //hired for a month 
+      data.push(this.app.game.time)
+    }
+    else {
+      //add to equipped  
+      this.state.eq.add(item.id)
+    }
+    this.state.inventory.push(data)
+    //reduce qty in region market by pushing to bought 
+    let bid = Hash([rid,data[1] == "NPC" ? item.id : item.text]) 
+    this.app.game.bought[bid] = this.app.game.bought[bid] ? this.app.game.bought[bid]+1 : 1
+    //save and refresh 
+    this.app.save("characters",this.id)
+    this.app.notify(`${this.name} has bought ${item.text}`)
+  }
+
+  transferCoin (amt) {
+    this.app.game.coin -= amt
+    this.state.coin += amt 
+    //save and refresh 
+    this.app.save("characters",this.id)
+    this.app.notify(`You have transferred ${amt}g to ${this.name}`)
+  }
+
+  learnDark (cost,ids) {
+    //reduce coin 
+    this.state.coin -= cost 
+    //pick id 
+    let kid = chance.pickone(ids)
+    this.app.game.known.add(kid)
+    //save and refresh 
+    this.app.save("characters",this.id)
+
+    let _what = this.location.region.children.find(c=> c.id == kid)
+    this.app.notify(`You have been told of a... ${_what.text}`)
   }
 
   /*
@@ -347,7 +449,7 @@ class Explorer {
   hire () {
     let game = this.app.game 
     //cost in gold  
-    let cost = this.cost/10 
+    let cost = this.cost
     if(game.coin < cost || this.isHired) 
       return
 
@@ -364,11 +466,35 @@ class Explorer {
   */
 
   get saves () {
-    return Object.fromEntries(Object.entries(ActionsBySave).map((([save,acts])=> [save,acts.reduce((sum,a)=> sum+(this.actions[a]>0 ? 1 : 0),0)])))
+    let _act = this.actions
+    return Object.fromEntries(Object.entries(ActionsBySave).map((([save,acts])=> {
+      let val = acts.reduce((sum,a)=> sum+(_act[a][0]>0 ? 1 : 0),0)
+      return [save,[val,DieRank[val]]]
+    })))
   }
 
   get actions () {
-    return Object.fromEntries(AllActions.map(a => [a,(this._actions[a] || 0)]))
+    let lv = this.level 
+    let _act = this._actions = {}
+    let RNG = new Chance(this.id)
+
+    //allways 4 random action advances 
+    for(let i = 0; i < 4; i++){
+      let a = RNG.pickone(AllActions)
+      _act[a] = _act[a] ? _act[a]+1 : 1 
+    }
+    //write intial actions based upon level advances 
+    ClassAdvance[this._classes[0]].forEach( (adv,i) => {
+      if(i >= lv){
+        return
+      }
+      adv.split(",").forEach(a => _act[a] = _act[a] ? _act[a]+1 : 1)
+    })
+    
+    return Object.fromEntries(AllActions.map(a => {
+      let val = (this._actions[a] || 0)
+      return [a,[val,DieRank[val]]]
+    }))
   }
 
   get actionsBySave () {
@@ -376,23 +502,61 @@ class Explorer {
   }
 
   /*
-    Take action in a region 
+    Take action 
   */
+  itemOption (_item,opt) {
+    let item = this.state.inventory.find(i => i[0] == _item.id)
+    
+    if(opt == "Equip" && _item.data[1] == "Power"){
+      //cannot equip any more 
+      item[7] = false
+      //add to equipped  
+      this.state.eq.add(_item.id)
+    }
+    else if(opt == "Equip"){
+      //add to equipped  
+      this.state.eq.add(_item.id)
+    }
+    else if(opt == "Offload"){
+      //add to equipped  
+      this.state.eq.delete(_item.id)
+    }
+
+    //save and refresh 
+    this.app.save("characters",this.id)
+  }
+  
   regionAct ([act,text,data]) {
     if(act == "Move"){
       let to = data 
-      let i = to.what == "settlement" ? -1 : to.what == "portal" ? 0 : to.id
-      let rid = this.state.location.split(".")[0]
-      this.state.location = [rid,i].join(".")
-
-      this.app.refresh()
+      //set location 
+      this.state.location[1] = to.what == "portal" ? 0 : to.id
+      //time to move 
+      let time = 1
+      this.state.action+=time 
+      //save and refresh 
+      this.app.save("characters",this.id)
     }
-    else if (act == "Explore"){}
+    else if (act == "Explore"){
+      let time = 'settlement,dungeon'.includes(data.what) ? 0.125 : 1 
+      this.explore = {
+        where : data,
+        exp : this.location.region.explore(data)
+      }
+      console.log(time,this.explore)
+    }
+    else if (act == "View Market"){
+      this.location.region.random(act)
+    }
   }
 
   applyMods () {
     
   }
+
+  /*
+    Save and Load 
+  */
   
   save() {
     let data = {
@@ -420,8 +584,16 @@ class Explorer {
   */
 
   get UI () {
-    let {app, inventory} = this 
+    let {app, inventory, allies, load} = this 
     let {html} = app 
+
+    const Allies = () => html`
+    <div class="flex justify-between">
+      <div class="f5 b">Allies</div>
+      <div><b>Max</b> ${load.allies[1]}</div>
+    </div>
+    <div class="ph2">${allies.sort((a,b)=>a.data[2].localeCompare(b.data[2])).map(a => html`<div>${a.text}</div>`)}</div>
+    `
     
     return html`
   <div class="bg-white-70 br2 mw6 ma1 pa1">
@@ -432,19 +604,33 @@ class Explorer {
     <div class="ph1">
       <div class="flex justify-between">
         <div>${this.people.short}</div>
-        <div>${this.cost/10} gp/month</div>
+        <div>${this.cost} gp/month</div>
       </div>
       <div>LV: ${this.level} ${this.classes.join("/")}</div>
       <div class="flex justify-center">
         ${Object.entries(this.saves).map(([save,val],i)=> html`
         <div class="mh2">
-          <div class="f4"><b>${save}</b> +${val}</div>
-          ${this.actionsBySave[i].map(a => html`<div><b>${a[0]}</b> ${a[1]}</div>`)}
+          <div class="f4"><b>${save}</b> ${val[1]}</div>
+          ${this.actionsBySave[i].map(a => html`<div><b>${a[0]}</b> ${a[1][1]}</div>`)}
         </div>`)}
       </div>
-      <div><b>Location:</b> <span class="link pointer dim underline-hover blue mh1" onClick=${()=>app.show = ["areas", this.location.id].join(".")}>${this.location.parent.name}, ${this.location.name}</span></div>
-      <div class="f5 b">Inventory</div>
-      <div class="ph2">${inventory.sort((a,b)=>a.data[0].localeCompare(b.data[0])).map(item => html`<div>${item.text(html)}</div>`)}</div>
+      <div><b>Location:</b> <span class="link pointer dim underline-hover blue mh1" onClick=${()=>app.show = ["areas", this.location.region.id].join(".")}>${this.location.region.parent.name}, ${this.location.region.name}</span></div>
+      <div class="flex justify-between">
+        <div class="f5 b">Inventory</div>
+        <div><b>Load</b> ${load.items.join("|")}</div>
+      </div>
+      <div class="ph2">${inventory.sort((a,b)=>a.text.localeCompare(b.text)).map(item => html`
+        <div class="flex justify-between">
+          ${item.options ? html`
+          <div class="dropdown">
+            <div class="pointer link blue underline-hover">${item.text}</div>
+            <div class="dropdown-content bg-white ba bw1 pa1">
+              ${item.options.map(o=>html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> this.itemOption(item,o)}>${o}</div>`)}
+            </div>
+          </div>` : html`<div>${item.text}</div>`}
+        </div>`)}
+      </div>
+      ${allies.length>0 ? Allies() : ""}
     </div>
   </div>
   `

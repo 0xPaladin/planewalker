@@ -3,7 +3,7 @@ function capitalize(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-import {RandBetween, SumDice, Likely, WeightedString, BuildArray, chance} from "./random.js"
+import {RandBetween, SumDice, Likely, WeightedString, BuildArray, Hash, chance} from "./random.js"
 
 /*
   Contains setting data : elements, magic types, etc 
@@ -23,6 +23,22 @@ const Occupations = {
   "Rogue" : ["Thug","Thief","Con Artist","Spy"],
   "Scholar" : ["Scribe","Scholar","Acolyte","Arcanist"],
   "Soldier" : ["Soldier","Archer","Bodyguard"],
+}
+
+/*
+Impoverished lifestyle, per week 5 sp
+Common lifestyle, per week 20 sp, 8g mo 
+Rich lifestyle, per week 200 sp, 80g mo 
+*/
+const ToHire = {
+  "Commoner" : 8,
+  "Diplomat" : 30, 
+  "Engineer" : 40, 
+  "Explorer" : 16,
+  "Tradesman" : 25,
+  "Rogue" : 20,
+  "Scholar" : 40,
+  "Soldier" : 30,
 }
 
 const Skilled = {
@@ -88,44 +104,26 @@ const Adventurers = {
   "Warrior" : "Fighter,Ranger,Barbarian,Monk/5,4,2,2"
 }
 
-const NPCs = {
-  age (RNG) {
-    return WeightedString("child,youth,adult,old,elderly/1,2,4,2,1",RNG)
-  },
-  adventurer (RNG = chance, base) {
+const DieRank = ["d4","d6","d8","d10","d12","d14"]
+
+const Professions = {
+  adventurer (RNG = chance, base = "random") {
     let what = RNG.shuffle(["Arcane","Devout","Rogue","Skilled","Warrior"]).slice(0,RandBetween(1,2,RNG))
-    if(base && !what.includes(base)) {
+    if(base != "random" && !what.includes(base)) {
       what[0] = base 
     }
     
     return what.map(b => WeightedString(Adventurers[b],RNG))
   } ,
-  occupation(RNG=chance, type) {
+  trade (RNG=chance, type = "random") {
     let trade = WeightedString("Commoner,Diplomat,Engineer,Explorer,Tradesman,Rogue,Scholar,Soldier/30,5,5,10,15,15,5,15",RNG)
-    trade = type || trade
+    trade = type != "random" ? type : trade
     let o = RNG.pickone(Occupations[trade])
+    o+= o == "Merchant" ? ","+RNG.pickone(Occupations.Merchant) : ""
     //find an alternate 
     let alt = AlternateTitles[o] && Likely(50,RNG) ? capitalize(RNG.pickone(AlternateTitles[o].split(","))) : null 
-    //get short title 
-    let short = alt ? alt : o == "Merchant" ? [o,"of",RNG.pickone(Occupations.Merchant)].join(" ") : o 
-    //get skills 
-    let skills = Skilled[o] ? Skilled[o].split(", ") : null
-    //competence
-    let competence = RNG.weighted(["liability", "incompetent", "competent", "adept", "exceptional", "masterful"], [1, 2, 4, 3, 1, 1])
-    return {trade,o,alt,short,skills,competence}
+    return [trade,o,alt]
   },
-  common(RNG=chance, type) {
-    let o = NPCs.occupation(RNG, type)
-    let p = ByRarity({what:"PCs"},RNG)
-    let age = NPCs.age(RNG)
-
-    return {
-      get short () {return [this.people.short,this.occupation.short].join(" ")},
-      people: p,
-      age,
-      occupation: o,
-    }
-  }
 }
 
 // fake lookup for monster compendium 
@@ -270,13 +268,16 @@ const Generators = {
   Animal(RNG=chance,o={}) {
     //base determines size 
     let {base, rarity, max, delta} = o
-    let size = RNG.pickone(base)
+    let size = o.size || RNG.pickone(base)
 
     //air earth water 
     const aew = RNG.weighted(['a', 'e', 'w', 'c'], [3, 6, 2, 1])
 
     let what = (aew == 'c' ? Generators._chimera(RNG) : Generators._animal(RNG, aew))
     let tags = aew == "w" || waterAnimals.reduce((isAquatic,a)=> isAquatic || a.includes(what),false) ? ["aquatic"] : []
+    if(size != "medium"){
+      tags.push(size)
+    }
     
     return ["Animal", what + " ["+size+"]",tags]
   },
@@ -356,29 +357,6 @@ const Generators = {
     }
     return what
   },
-  Lair(base, short) {
-    let lair = ['Aberration', 'Dragon', 'Fey', 'Humanoid', 'Monstrous Humanoid','People', 'Outsider', 'Undead'].includes(base) ? "Camp" : "Lair"
-
-    return lair
-  }
-}
-
-const Format = (id,rank,nameBase,opts,[base,short,tags])=>{
-  if(!tags.includes("aquatic") && IsAquatic.includes(short)){
-    tags.push("aquatic")
-  }
-  
-  return {
-    id,
-    rank,
-    nameBase,
-    opts,
-    base,
-    _short : short,
-    lair: Generators.Lair(base, short),
-    tags,
-    get short () { return [this._short,this.adventurer ? this.adventurer.join("/") : ""].join(" ")} 
-  }
 }
 
 //get the string to determine the actual result 
@@ -416,52 +394,80 @@ const StringGenerate = {
   Exports 
 */
 
-//Pull a random faction 
-const Faction = (RNG=chance,alignment="neutral")=>{
-  let list = alignment == "neutral" ? RNG.bool() ? Details.factions.sigil : Details.factions.outsiders : Details.factions[alignment]
-  return RNG.pickone(list)
-}
 
-const ByRarity = (o={})=>{
+const Encounter = (o={})=>{
   let id = o.id || chance.hash()
   let RNG = new Chance(id)
-  let {rarity, str=null} = o
-  let rank = rarity = rarity === undefined || rarity === null ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : rarity
+  let {threat = null, rarity = null, str=null, size} = o
+  let rank = threat !== null ? threat : rarity !== null ? rarity : RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) 
 
+  //threat or rarity 
+  let TR = threat !== null ? Threat : Rarity
+  
   //pick from list 
-  let type = o.what != null ? o.what : WeightedString("Petitioner,Planar,Beast,Monster,Celestial,Fiend,Elemental/30,15,20,10,10,10,5",RNG)
+  let type = o.what != null ? o.what : WeightedString("Petitioner,Planar,Beast,Monster,Celestial,Fiend,Elemental/30,15,20,10,10,10,5",RNG) 
 
-  //pulls rarity string 
-  let[gen,_str,_outsider] = o.str != null ? [type, o.str] : Rarity[type] ? [type, Rarity[type]] : StringGenerate[type](RNG, Rarity)
+  //pulls string 
+  let[gen,_str,_outsider] = o.str != null ? [type, o.str] : TR[type] ? [type, TR[type]] : StringGenerate[type](RNG, TR)
   gen = Generators[gen] ? gen : Details.Outsiders.Outsiders.includes(gen) ? "Outsider" : gen 
   type = _outsider ? _outsider : type 
 
-  let nameBase = RandBetween(0,42,RNG)
+  //gen result 
+  let opts = Object.assign({id,type,size},Split(rank, _str))
+  let [base,short,tags=[]] = Generators[gen](RNG, opts)
 
-  let opts = Object.assign({id,type},Split(rarity, _str))
-  //Finish up using the unique genrators 
-  return Format(id,rank,nameBase,opts,Generators[gen](RNG, opts))
+  //tags 
+  if(!tags.includes("aquatic") && IsAquatic.includes(short)){
+    tags.push("aquatic")
+  }
+  tags = [base,...tags]
+
+  //get trade 
+  let [_trade,_occ] = o.trade ? o.trade.split(",") : []
+  let trade = Professions.trade(RNG, _trade || "random")
+  if(_occ){
+    trade = [_trade,_occ,null]
+  }
+  //adventurer 
+  let adv = Professions.adventurer(RNG, o.adventurer || "random")
+  let prof = o.trade ? trade : o.adventurer ? adv : []
+
+  //extra fluff
+  //age 
+  let age = WeightedString("child,youth,adult,old,elderly/1,2,4,2,1",RNG)
+  tags.push(age)
+
+  //format result 
+  return {
+    data : [id,"NPC",short,rank,prof,tags],
+    get id () {return this.data[0]},
+    get nameBase () {return Math.abs(parseInt(Hash(this.data),16)%43) },
+    get base () {return this.tags[0]},
+    get people () {return this.tags[1]},
+    get rank () {return this.data[3]},
+    get tags () {return this.data[5]},
+    get outsider () {return this.base == "Outsider" ? this.tags[1] : null},
+    get trade () { 
+      if(this.data[4].length != 3) {
+        return null 
+      }
+
+      let m = [1, 2, 4, 8, 16, 32][this.rank]
+      let [trade,occ,alt] = this.data[4]
+      return  {
+        short : alt ? alt : occ.includes("Merchant") ? occ.split(",").join(" of ") : occ,
+        skills : Skilled[occ] ? Skilled[occ].split(", ") : null,
+        toHire : ToHire[trade] * m 
+      }
+    },
+    get adventurer () {return this.trade ? null : this.data[4] },
+    get lair () { return 'Fey,People,Outsider'.includes(this.base) },
+    get hasJobs () { return 'Dragon,Fey,People,Outsider'.includes(this.base)},
+    get short () { return `${this.data[2]} ${this.trade ? this.trade.short : this.adventurer ? this.adventurer.join("/") : ""}`},
+    get text () { return `${this.data[2]} ${this.trade ? this.trade.short : this.adventurer ? this.adventurer.join("/") : ""} ${DieRank[this.rank]}`},
+    get price () {return this.trade ? this.trade.toHire : null }
+  }
 }
 
-const ByThreat = (o={})=>{
-  let id = o.id || chance.hash()
-  let RNG = new Chance(id)
-  let {threat, str=null} = o
-  let rank = threat = threat === undefined || threat === null ? RNG.weighted([0, 1, 2, 3], [45, 35, 15, 5]) : threat
 
-  //pick from list 
-  let type = o.what != null ? o.what : WeightedString("Petitioner,Planar,Beast,Monster,Celestial,Fiend,Elemental/30,15,20,10,10,10,5",RNG)
-
-  //pulls rarity string 
-  let[gen,_str] = o.str != null ? [type, o.str] : Threat[type] ? [type, Threat[type]] : StringGenerate[type](RNG, Threat)
-  gen = Details.Outsiders.Outsiders.includes(gen) ? "Outsider" : gen 
-
-  let nameBase = RandBetween(0,42,RNG)
-
-  let opts = Object.assign({id,threat,type},Split(threat, _str))
-  //Finish up using the unique genrators 
-  return Format(id,rank,nameBase,opts,Generators[gen](RNG, opts))
-}
-
-
-export {ByRarity, ByThreat, Faction, NPCs}
+export {Encounter, Professions}

@@ -3,7 +3,6 @@ import {RandBetween, SumDice, Likely, Difficulty, WeightedString, chance} from "
   Contains setting data : elements, magic types, etc 
 */
 import*as Details from "./data.js"
-import {Faction, NPCs} from "./encounters.js"
 
 /*
   E, Explore: Hunt, Move, Muscle 
@@ -152,7 +151,7 @@ const Exploration = (where,safety,diff=null)=>{
 
   let what = ""
     , skills = [];
-  const focus = {
+  const Focus = {
     'Cypher'() {
       let what = RNG.pickone(Likely(safe, RNG) ? ['Design', 'Puzzle','Hidden Trails'] : ['Curse'])
       return what
@@ -179,7 +178,7 @@ const Exploration = (where,safety,diff=null)=>{
     let c = RNG.weighted(challenges, weights)
     let rank = RNG.bool() ? Difficulty(RNG) : diff
     let check = (rank + 1) * 4 + (SumDice('4d3') - 8)
-    return [c, focus[c](), rank, check]
+    return [c, Focus[c](), rank, check]
   }
 
   //exploration challenges  
@@ -198,18 +197,20 @@ const Exploration = (where,safety,diff=null)=>{
   }
 
   // assign challenge group, difficulty, action 
-  let data = ExArray(types[where])
-  let short = [data[0], "[" + data[1] + "]", data[3] + ";", "Find:", reward[0]].join(" ")
+  let [challenge,focus,rank,check] = ExArray(types[where])
 
   //get actions 
-  let actions = GetActions(data[1],RNG)
+  let actions = GetActions(focus)
 
   return {
-    data,
+    challenge,
+    focus,
+    rank,
+    check,
     actions,
     where,
-    short,
-    diff
+    diff,
+    get short () { return `${this.challenge} (${this.focus}) [${this.diff}]; Find: ${this.reward[0]}`}
   }
 }
 

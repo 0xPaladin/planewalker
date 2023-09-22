@@ -37,7 +37,10 @@ const Explorers = (app)=>{
   //final html
   return html`
   <div class="flex flex-wrap justify-center">
-    ${Object.values(characters).map(c => c.UI)}
+    ${Object.values(characters).filter(c => c.isHired).map(c => c.UI)}
+  </div>
+  <div class="flex flex-wrap justify-center">
+    ${Object.values(characters).filter(c => !c.isHired).map(c => c.UI)}
   </div>
   `
 }
@@ -170,7 +173,7 @@ const Dialog = (app)=>{
 
   return app.html`
   <div class="fixed z-2 top-1 left-1 bottom-1 right-1 flex items-center justify-center">
-    <div class="overflow-y-auto o-90 bg-washed-blue br3 shadow-5 pa2">
+    <div class="overflow-y-auto o-90 h-100 bg-washed-blue br3 shadow-5 pa2">
       <div class="fr pointer dim underline-hover hover-red bg-gray br2 white b pa1" onClick=${()=>app.updateState("dialog","")}>X</div>
       ${app[what][id][ui]}
     </div>

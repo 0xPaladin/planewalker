@@ -17,6 +17,9 @@ DB.areas = localforage.createInstance({
 DB.factions = localforage.createInstance({
   name: "Factions"
 });
+DB.characters = localforage.createInstance({
+  name: "Characters"
+});
 
 /*
   Chance RNG
@@ -50,10 +53,11 @@ let Game = {
   "id": "",
   "mode" : "Explorer",
   "name": "",
-  "time": 0,
+  "time": 1,
   //days 
   "coin": 2000,
   //gold 
+  "bought" : {},
   "known" : new Set(),
   "factions": new Set(),
   "areas": new Set(),
@@ -172,9 +176,15 @@ class App extends Component {
     this.refresh()
   }
 
-  setExplorers () {
+  async setExplorers () {
     let RNG = new Chance([Game.id,Math.floor(Game.time/7)].join("."))
-    BuildArray(5,()=> new Gen.Explorer(this,{id:RNG.hash()}))
+    BuildArray(5,()=> {
+      let id = RNG.hash()
+      if(Game.characters.has(id)){
+        return
+      }
+      new Gen.Explorer(this,{id})
+    })
   }
 
   save(_set,id) {
@@ -197,7 +207,7 @@ class App extends Component {
   }
 
   async load(id) {
-    let sets = ["factions", "areas"]
+    let sets = ["factions", "areas", "characters"]
     //pull game 
     let game = await DB.Games.getItem(id)
     if (!game) {
@@ -207,7 +217,7 @@ class App extends Component {
     //first generate 
     this.generate(id)
     //write state 
-    Object.keys(Game).forEach(k=> Game[k] = sets.includes(k) ? new Set(game[k]) : game[k])
+    Object.keys(Game).forEach(k=> Game[k] = sets.includes(k) ? new Set(game[k]) : game[k] || Game[k])
 
     this.setExplorers()
 
@@ -243,12 +253,14 @@ class App extends Component {
     this.refresh()
   }
   
-  act(f, opts) {
-    //call the function 
-    f(opts)
-    //save
-    //refresh 
-    this.refresh()
+  nextDay () {
+    Game.time += 1 
+    if(Game.time % 30 == 1){
+      //new month 
+      Game.bought = {} 
+    }
+    this.setExplorers ()
+    this.save(null)
   }
 
   /*
@@ -292,6 +304,17 @@ class App extends Component {
     Render functions 
   */
 
+  notify(text,type = "success") {
+    let opts = {
+      theme : "relax",
+      type,
+      text,
+      layout : "center"
+    }
+    
+    new Noty(opts).show();
+  }
+
   //main function for updating state 
   updateState(what, val) {
     let s = {}
@@ -334,6 +357,7 @@ class App extends Component {
         <h1 class="pointer underline-hover mv2" onClick=${()=>this.show = "Main"}>Planewalker</h1>
       </div>
       <div class="flex items-center">
+        <div class="pointer dim bg-green br2 b white mh1 pa1 ph2" onClick=${()=> this.nextDay()}>Next Day</div>
         <div class="ba mh1 pa1">${Game.coin}g Day ${Game.time}</div>
         <input type="text" value=${Game.name} onChange=${(e)=>Game.name = e.target.value}>${Game.name}</input>
         ${!["Factions", "Planes", "Pantheons", "Explorers", "areas", "factions"].includes(view) ? "" : html`<div class="pointer f5 link dim ba bw1 pa1 dib black mh1" onClick=${()=>this.show = "Main"}>Home</div>`}

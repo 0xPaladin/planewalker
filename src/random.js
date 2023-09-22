@@ -27,7 +27,9 @@ const WeightedString = (str,RNG=chance)=>{
 /*
   Non Random Helper Functions 
 */
-const Hash = (str)=>{
+const Hash = (toHash)=>{
+  let str = Array.isArray(toHash) ? toHash.join() : typeof toHash === "object" ? JSON.stringify(toHash) : toHash
+  
   let hash = 0;
   for (let i = 0, len = str.length; i < len; i++) {
     let chr = str.charCodeAt(i);
