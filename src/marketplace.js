@@ -5,17 +5,17 @@ import {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, Wei
 
 import*as Gear from "./gear.js"
 
+const AllResources = ["game/hide/fur", "timber/clay", "herb/spice/dye", "copper/tin/iron", "silver/gold/gems"]
+
 /*
   Market Pricing 
 */
-const Pricing = (data)=>{
-  let base = data[1] == "Resource" ? data[2] : data[1]
-  let what = data[1] == "Resource" ? data[4] : data[2]
-  let rank = data[3]
+const Pricing = (data, sale = false, need =[], surplus=[])=>{
+  let [id,base,what,rank] = data
 
   //'resource,essence,material,Weapon,Armor,Equipment,Potion,Magical,Power
   const index = {
-    Resource: ["game/hide/fur", "timber/clay", "herb/spice/dye", "copper/tin/iron", "silver/gold/gems"],
+    Resource: AllResources,
     Materials: ["martial", "potions", "clothing", "equipment", "jewelry"],
     Equipment: ["Documents", "Gear", "Implements", "Supplies", "Tools", "Instrument"],
     Armor: ["Light", "Medium", "Heavy", "Shield"],
@@ -24,119 +24,100 @@ const Pricing = (data)=>{
   }
 
   const prices = {
-    Resource: [20, 20, 50, 40, 100],
-    Materials: [10, 10, 5, 10, 25],
-    Essence: [50],
-    Equipment: [50, 200, 200, 100, 200, 200],
-    Armor: [30, 250, 1200, 10],
-    Weapon: [10, 10, 20, 50, 10, 20, 50],
-    Potion: [25, 10],
-    Magical: [200],
-    Power: [200]
+    Resource: [2, 2, 5, 4, 10],
+    Materials: [1, 1, 0.5, 1, 2.5],
+    Essence: [5],
+    Equipment: [5, 20, 20, 10, 20, 20],
+    Armor: [3, 25, 120, 1],
+    Weapon: [1, 1, 2, 5, 1, 2, 5],
+    Potion: [2.5, 1],
+    Magical: [50],
+    Power: [50]
   }
 
   //based on rank 
-  const multiplier = [1, 2, 4, 8, 16, 32][rank]
+  let multiplier = [1, 2, 4, 8, 16, 32][rank]
+  multiplier *= need.join().includes(what) ? 2 : surplus.join().includes(what) ? 0.5 : 1 
+  multiplier *= (sale ? 0.5 : 1)
 
   let variance = chance.weighted([0.7, 0.8, 0.95, 1.1, 1.2], [1, 2, 4, 2, 1]) + RandBetween(1, 10) / 100
 
   //price index and price 
-  let pi = index[base] ? base == "Resource" ? index.Resource.reduce((v,r,i)=>r.includes(data[3]) ? i : v, 0) : index[base].indexOf(what) > -1 ? index[base].indexOf(what) : 0 : 0
-  let p = prices[base][pi] * multiplier * variance
+  let pi = index[base] ? base == "Resource" ? AllResources.reduce((v,r,i)=>r.includes(what) ? i : v, 0) : index[base].indexOf(what) > -1 ? index[base].indexOf(what) : 0 : 0
+  let p = prices[base][pi] * multiplier * variance 
 
-  return Math.floor(p)
-}
-
-const Resource = (base,what,rank)=>{
-  let r = {
-    base,
-    what,
-    rank
-  }
-  r.text = "resource" == base ? capitalize(what) : [capitalize(base), ": ", base == "essence" ? what[2] : what].join("")
-
-  if (base == "essence") {
-    r.d = chance.weighted([6, 8, 10, 12], [2, 5, 2, 1])
-  }
-  return
+  return Number(p.toFixed(1))
 }
 
 //items for marketplace 
-const Marketplace = (region)=>{
+const Marketplace = (region,settlement)=>{
   let bought = region.app.game.bought 
-  let Gen = region.app.gen
+  let Gen = Gear
   let time = Math.floor(region.app.game.time / 30)
-  let RNG = new Chance(Hash([region.id, "market" , time]))
+  let RNG = new Chance(Hash([region.id, "market" , settlement.id, time]))
 
+  //needs and surplus 
+  let surplus = region.lookup("resource").map(r => r.specifics[0])
+  let need = AllResources.filter(r => !surplus.includes(r))
+  need = [RNG.pickone(need)]
+
+  //final stock qty and market  
+  let Qty = {}, M = {
+    time,
+    surplus,
+    need,
+    pages:'Resource,Materials,Weapon,Armor,Equipment,Potion,Magical,Power,NPC'.split(",")};
+
+  //setup market categories 
+  M.pages.forEach(c => M[c] = [])
+
+  //maker functions 
   const MakeNPC = (rarity,o={}) => {
-    let opts = Object.assign(o,{id:RNG.natural(),rarity})
+    let id = RNG.natural()
+    let opts = Object.assign(o,{id,rarity})
     let npc = region.NPC(opts)
     npc.qty = 1 
-    return npc 
+    //add to stock 
+    Qty[id] = npc 
   }
   //make items for the marketplace 
   const MakeLoot = (gen,what,rank,qty)=> {
     let opts = {id:RNG.natural(),what,rank}
-    let loot = Gen[gen](...(gen == "Resource" ? [region, opts] : [opts]))
-    loot.price = Pricing(loot.data)
-    loot.qty = qty 
-    return loot 
-  }
-
-  //base available 
-  const base = {
-    _Armor: ["Light", "Medium", "Heavy", "Shield"],
-    _Weapon: ["Simple", "Light Melee", "Melee", "Heavy Melee", "Light Ranged", "Ranged", "Heavy Ranged"],
-    _Equipment: "Documents,Gear,Implements,Tools"
+    let loot = Gen[gen](...(gen == "Materials" ? [region, opts] : [opts]))
+    loot.price = Pricing(loot.data,false,need,surplus)
+    //add to stock 
+    Qty[loot.text] = Qty[loot.text] || loot 
+    Qty[loot.text].qty = Qty[loot.text].qty ? Qty[loot.text].qty+qty : qty
   }
 
   //what is always avialble 
-  let Resources = [MakeLoot("Resource", "Resource", 0, 99), ...BuildArray(3, ()=>MakeLoot("Resource", "Materials", 0, 1))]
-  let Martial = [...base._Armor.map(e=>MakeLoot("Armor", e, 0, 1)), ...base._Weapon.map(e=>MakeLoot("Weapon", e, 0, 1))]
-  let Equipment = base._Equipment.split(",").map(e=>MakeLoot("Equipment", e, 0, 99))
-  let Magical = []
+  region.lookup("resource").map(r => r.short).forEach(r => MakeLoot("Resource", r, 0, 99))
+  BuildArray(3, ()=>MakeLoot("Materials", "Materials", 0, 1))
+  "Light,Medium,Heavy,Shield".split(",").forEach(e=>MakeLoot("Armor", e, 0, 1))
+  "Simple,Light Melee,Melee,Heavy Melee,Light Ranged,Ranged,Heavy Ranged".split(",").forEach(e=>MakeLoot("Weapon", e, 0, 1))
+  "Documents,Gear,Implements,Tools".split(",").forEach(e=>MakeLoot("Equipment", e, 0, 99))
+  BuildArray(2,()=>MakeNPC(0))
   let Animals = ["Commoner,Porter","Soldier,Soldier"]
-  let Ally = [...BuildArray(2,()=>MakeNPC(0)),...Animals.map(trade=> MakeNPC(0,{what:"Animal",trade,size:"large"}))]
+  Animals.map(trade=> MakeNPC(0,{what:"Animal",trade,size:"large"}))
 
   //market size based upon settlements
-  let settlements = region.lookup("settlement")
-  let _ranks = settlements.map(s=>s.scale).reduce((m,s)=>{
-    //mak rank of what is available 
-    let max = s + 2
-    //number of items at rank 
-    BuildArray(max, (v,i)=>m[i] += Math.pow(2, max - i))
-    //return totals 
-    return m
-  }
-  , [0, 0, 0, 0, 0, 0])
-
-  //what is available 
-  let _stock = 'Resource,Essence,Materials,Weapon,Armor,Equipment,Potion,Magical,Power,NPC/'
-  _stock += region.lookup("resource").length > 0 ? '1.5,0.5,1.5,0.75,0.75,1.5,1,0.5,1,1' : '0,1,1.5,1,1,1.5,1,0.5,1,1'
+  //max rank of what is available 
+  let max = settlement.scale + 2
+  //number of items at rank 
+  let _ranks = BuildArray(max, (v,i)=>Math.pow(2, max - i))
 
   //build stock 
-  let qty = {}
-  let stock = _ranks.map((n,i)=>BuildArray(n, ()=>[WeightedString(_stock, RNG), i])).flat().forEach(([what,rank])=>{
+  let cat = 'Resource,Essence,Materials,Weapon,Armor,Equipment,Potion,Magical,Power,NPC'
+  let stock = _ranks.map((n,i)=>BuildArray(n, ()=>[WeightedString(cat+'/0,1,1.5,1,1,1.5,1,0.5,1,1', RNG), i])).flat().forEach(([what,rank])=>{
     //don't need rank 0 basic stuff 
-    if (rank == 0 && ["Resource", "Equipment"].includes(what)) {
+    if (rank == 0 && what == "Equipment") {
       return
     }
 
-    let item = 'Resource,Essence,Materials'.includes(what) ? MakeLoot("Resource", what, rank, 1) : what == "NPC" ? MakeNPC(rank) : MakeLoot(what, undefined, rank, 1)
-
-    if(what == "NPC") {
-      qty[item.id] = item
-    }
-    else if (qty[item.text]) {
-      qty[item.text].qty += 1
-    } else {
-      item.price = Pricing(item.data)
-      qty[item.text] = item
-    }
-  }
-  )
+    let item = 'Essence,Materials'.includes(what) ? MakeLoot("Materials", what, rank, 1) : what == "NPC" ? MakeNPC(rank) : MakeLoot(what, undefined, rank, 1)
+  })
   //add stock to final market arrays 
-  Object.values(qty).forEach(s => {
+  Object.values(Qty).forEach(s => {
     let what = s.data[1]
     //check if bought 
     let bid = Hash([region.id,what == "NPC" ? s.id : s.text])
@@ -144,69 +125,68 @@ const Marketplace = (region)=>{
     if(s.qty <= 0){
       return
     }
-    //assign What Array
-    let Item = what == "NPC" ? Ally : what == "Resource" ? Resources : 'Weapon,Armor'.includes(what) ? Martial : 'Potion,Magical,Power'.includes(what) ? Magical : Equipment
-    Item.push(s)
+    
+    //assign to market 
+    M[what].push(s)
   })
 
   //sort final arrays 
   let _Sort = (arr,i = 2)=>arr.sort((a,b)=>a.data[i].localeCompare(b.data[i]))
-  return {
-    time,
-    Resources: _Sort(Resources),
-    Martial: _Sort(Martial),
-    Equipment: _Sort(Equipment),
-    Magical: _Sort(Magical),
-    Ally: _Sort(Ally,2),
-  }
+  M.pages.forEach(c => _Sort(M[c]))
+  
+  return M
 }
 
 const UI = (region)=>{
   let {html, game} = region.app
   let d = region.app.state.dialog
-  let[what,id,ui,_page="Resources"] = d.split(".")
+  let[what,id,ui,eid="0",_page="Resource"] = d.split(".")
   //get region info 
   let {isKnown} = region.view()
   let toDiscover = region.children.filter(c => !isKnown.includes(c.id)).map(c=>c.id)
+  //buyer 
+  let buyer = region.characters.find(c=>c.id == eid)
+  let _forSale = buyer.inventory.filter(item => item.maySell)
   //marketplace of region 
-  let M = Marketplace(region)
-  //characters that may buy 
-  let buyers = region.characters.filter(c=>c.location.atFeature.what == "settlement" && c.isHired)
+  let M = Marketplace(region,buyer.location.atFeature)
+
+  let pages = M.pages 
+  if(eid != "0"){
+    pages.push("Explorer","Sell Items")
+  }
+
+  //may buy something  
+  const _mayBuy = (price) => buyer.mayBuy(_page == "NPC" ? "npc" : "item",price)
 
   //show market page 
-  const ShowPage = (p)=>region.app.updateState("dialog", [what, id, ui, p].join("."))
-
-  //pages of marketplace 
-  let pages = game.mode == "Explorer" ? ["Resources", "Martial", "Equipment", "Magical","Ally","Explorer"] : ["Resources", "Martial", "Equipment","Magical","Ally"]     
+  const ShowPage = (p)=>region.app.updateState("dialog", [what, id, ui, eid, p].join("."))
 
   //explorer side of market place allows transfer of coin and learning dark 
   const ExplorerMarket = () => html`
   <div>
-    ${_buyers(5).length && toDiscover.length>0 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>_buyers[0].learnDark(5,toDiscover)}>Learn Dark of the Region (5g)</div>`: ""}
-    ${buyers.map(b => b.powersToCrystalize.map(p => html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>b.crystalize(p)}>${b.name} Crystalize > ${p.text} (10g)</div>`))}
-    ${game.coin > 100 ? buyers.map(b => html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>b.transferCoin(100)}>Transfer 100g to ${b.name}</div>`) : ""} 
+    ${_mayBuy(5) && toDiscover.length>0 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("learnDark",toDiscover)}>Learn Dark of the Region (5g)</div>`: ""}
+    ${buyer.powersToCrystalize.map(p => html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("crystalize",p)}>${b.name} Crystalize > ${p.text} (10g)</div>`)}
+    ${game.coin > 100 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.transferCoin(100)}>Transfer 100g to ${buyer.name}</div>` : ""} 
   </div>
   `
 
   //each market place lists items - allows purchase if buyes have coin 
-  const _buyers = (price) => buyers.filter(b=>b.mayBuy(_page == "Ally" ? "npc" : "item",price))
-  const Buyers = (item)=>html`
-  <div class="dropdown">
-    <div class="pointer link blue underline-hover">${item.text || item.short}</div>
-    <div class="dropdown-content bg-white ba bw1 pa1">
-      ${_buyers(item.price).map(b=>html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> b.marketBuy(item,region.id)}>Buy > ${b.name}</div>`)}
-    </div>
-  </div>`
-  const Explore = (item)=>html`<div class="fl w-50">${_buyers(item.price).length > 0 ? Buyers(item) : item.text || item.short}</div><div class="fl w-25">${item.qty == -1 ? "unl" : item.qty}</div><div class="fl w-25">${item.price}</div>`
+  //add explorer items to sell to market 
+  const ForSale = (item) => html`<div class="pointer underline-hover b tc bg-light-gray br2 mv1 pa1">1x ${item.text || item.short} (${Pricing(item.data,true,M.need,M.surplus)}g)</div>`
+  //manage basic items for purchase 
+  const Explore = (item)=> html`<div class="flex justify-center pointer underline-hover b tc bg-light-gray br2 mv1 pa1">${item.qty}x ${_buyers(item.price).length > 0 ? Buyers(item) : item.text || item.short} (${item.price}g)</div>`
   //build market place doesn't do buying 
-  const Build = (s)=>html`<div class="fl w-50">${s.text || s.short}</div><div class="fl w-25">${s.qty == -1 ? "unl" : s.qty}</div><div class="fl w-25">${s.price}</div>`
+  const Build = (item)=>html`<div class="b tc bg-light-gray br2 mv1 pa1">${item.qty}x ${item.text || item.short} (${item.price}g)</div>`
 
-  return html`<div style="width:600px">
+  return html`
+  <div class="fr pointer dim underline-hover hover-red bg-gray br2 white b pa1" onClick=${()=>region.app.updateState("dialog","")}>X</div>
+  <div style="width:600px">
       <h3 class="ma0 mb1">${region.name} Marketplace</h3>
-      <div class="flex justify-center">${pages.map(p=>html`<div class="${p == _page ? "bg-gray white" : "bg-light-gray"} pointer b hover-bg-gray hover-white pa2" onClick=${()=>ShowPage(p)}>${p}</div>`)}</div>
+      <div class="mh5">
+        <div class="flex flex-wrap justify-center">${pages.map(p=>html`<div class="${p == _page ? "bg-gray white" : "bg-light-gray"} pointer b hover-bg-gray hover-white pa2" onClick=${()=>ShowPage(p)}>${p}</div>`)}</div>
+      </div>
       <div class="w-100 pa2">
-        ${_page == "Explorer" ? "" : html`<div class="b fl w-50">Item</div><div class="b fl w-25">Qty</div><div class="b fl w-25">Price</div>`} 
-        ${_page == "Explorer" && buyers.length>0 ? ExplorerMarket() : M[_page].map(s=>game.mode == "Explorer" ? Explore(s) : Build(s))}
+        ${_page == "Explorer" && buyers.length>0 ? ExplorerMarket() : _page == "Sell Items" ? _forSale.map(ForSale) : M[_page].map(s=>game.mode == "Explorer" ?  Explore(s) : Build(s))}
       </div>
     </div>`
 }

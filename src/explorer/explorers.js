@@ -297,6 +297,7 @@ class Explorer {
       item.data = d 
       //if power 
       item.options = !this.isHired ? null : d[1] == "Power" ? item.mayEquip ? ["Equip"] : null : mayOffload ? [eq.has(item.id) ? "Offload" : "Equip"] : null
+      item.maySell = d[1] == "Power" ? item.mayEquip ? true : false : true 
 
       return item
     })
@@ -340,6 +341,10 @@ class Explorer {
     }
   }
 
+  get mayAct () {
+    return this.state.action < this.app.game.time && this.isHired
+  }
+
   /*
     Location 
   */
@@ -351,32 +356,6 @@ class Explorer {
       region : r,
       atFeature
     }
-  }
-
-  get regionOptions () {
-    let mayAct = this.state.action < this.app.game.time && this.isHired
-    if(!mayAct) {
-      return []
-    }
-    
-    let {region,atFeature} = this.location
-    let {isKnown} = region.view()
-    
-    //core options 
-    let options = [["Explore","Explore",atFeature]] 
-
-    if(atFeature.what == "settlement"){
-      options.push(["View Market","View Market",atFeature])
-    }
-
-    //add moves 
-    region.children.forEach(c => {
-      if(c.text != atFeature.text && isKnown.includes(c.id) && !"people".includes(c.what)){
-        options.push(["Move","Move to "+c.text,c])
-      }
-    })
-
-    return options
   }
 
   /*
@@ -418,19 +397,6 @@ class Explorer {
     //save and refresh 
     this.app.save("characters",this.id)
     this.app.notify(`You have transferred ${amt}g to ${this.name}`)
-  }
-
-  learnDark (cost,ids) {
-    //reduce coin 
-    this.state.coin -= cost 
-    //pick id 
-    let kid = chance.pickone(ids)
-    this.app.game.known.add(kid)
-    //save and refresh 
-    this.app.save("characters",this.id)
-
-    let _what = this.location.region.children.find(c=> c.id == kid)
-    this.app.notify(`You have been told of a... ${_what.text}`)
   }
 
   /*
@@ -504,49 +470,66 @@ class Explorer {
   /*
     Take action 
   */
-  itemOption (_item,opt) {
-    let item = this.state.inventory.find(i => i[0] == _item.id)
-    
-    if(opt == "Equip" && _item.data[1] == "Power"){
-      //cannot equip any more 
-      item[7] = false
-      //add to equipped  
-      this.state.eq.add(_item.id)
+  takeAction (act,d) {
+    if (act == "View Market"){
+      this.app.updateState("dialog", ["areas", this.location.region.id, "marketUI",this.id].join("."))
     }
-    else if(opt == "Equip"){
-      //add to equipped  
-      this.state.eq.add(_item.id)
-    }
-    else if(opt == "Offload"){
-      //add to equipped  
-      this.state.eq.delete(_item.id)
-    }
-
-    //save and refresh 
-    this.app.save("characters",this.id)
-  }
-  
-  regionAct ([act,text,data]) {
     if(act == "Move"){
-      let to = data 
+      let to = d 
       //set location 
       this.state.location[1] = to.what == "portal" ? 0 : to.id
       //time to move 
       let time = 1
       this.state.action+=time 
       //save and refresh 
+      this.app.updateState("dialog","")
       this.app.save("characters",this.id)
     }
     else if (act == "Explore"){
-      let time = 'settlement,dungeon'.includes(data.what) ? 0.125 : 1 
+      let time = 'settlement,dungeon'.includes(d.what) ? 0.125 : 1 
       this.explore = {
-        where : data,
-        exp : this.location.region.explore(data)
+        where : d,
+        exp : this.location.region.explore(d)
       }
       console.log(time,this.explore)
     }
-    else if (act == "View Market"){
-      this.location.region.random(act)
+    else if (act == "learnDark") {
+      //reduce coin 
+      this.state.coin -= 5 
+      //pick id 
+      let kid = chance.pickone(d)
+      this.app.game.known.add(kid)
+      //save and refresh 
+      this.app.save("characters",this.id)
+  
+      let _what = this.location.region.children.find(c=> c.id == kid)
+      this.app.notify(`You have been told of a... ${_what.text}`)
+    }
+    else if(act == "crystalize"){
+      //reduce coin 
+      this.state.coin -= 10 
+      //get item and allow equip 
+      let item = this.state.inventory.find(i => i[0] == d.id)
+      item[7] = true 
+      //save and refresh 
+      this.app.save("characters",this.id)
+    }
+    else if(act == "Equip"){
+      let item = this.state.inventory.find(i => i[0] == d.id)
+      if(d.data[1] == "Power") {
+        //cannot equip any more 
+        item[7] = false
+      }
+      //add to equipped  
+      this.state.eq.add(d.id)
+      //save and refresh 
+      this.app.save("characters",this.id)
+    }
+    else if(act == "Offload"){
+      //add to equipped  
+      this.state.eq.delete(d.id)
+      //save and refresh 
+      this.app.save("characters",this.id)
     }
   }
 
@@ -582,6 +565,42 @@ class Explorer {
   /*
     UI
   */
+
+  get RegionOptionsUI () {
+    let html = this.app.html
+    let {region,atFeature} = this.location
+    let {isKnown} = region.view()
+    
+    //core options 
+    let options = [["Explore","Explore",atFeature]] 
+    //add market 
+    if(atFeature.what == "settlement"){
+      options.push(["View Market","View Market",atFeature])
+    }
+    //add moves 
+    region.children.forEach(c => {
+      if(c.text != atFeature.text && isKnown.includes(c.id) && !"people".includes(c.what)){
+        options.push(["Move","Move to "+c.text,c])
+      }
+    })
+    //handle portal moves 
+    if(atFeature.what == "portal"){
+      options.push(["UsePortal","Use the Portal to "+region.portal.short,region.portal])
+    }
+    else {
+      options.push(["Move","Move to Portal",region.portal])
+    }
+
+    //options in a top down button array 
+    return html`
+    <div class="fr pointer dim underline-hover hover-red bg-gray br2 white b pa1" onClick=${()=>this.app.updateState("dialog","")}>X</div>
+    <div style="width:600px">
+      <h3 class="ma0 mb1">${this.name} Options</h3>
+      <div class="mh5">
+        ${options.map(o => html`<div class="pointer tc b bg-light-gray br2 underline-hover mv1 pa2" onClick=${()=>this.takeAction(o[0],o[2])}>${o[1]}</div>`)}
+      </div>
+    </div>`
+  }
 
   get UI () {
     let {app, inventory, allies, load} = this 
@@ -625,7 +644,7 @@ class Explorer {
           <div class="dropdown">
             <div class="pointer link blue underline-hover">${item.text}</div>
             <div class="dropdown-content bg-white ba bw1 pa1">
-              ${item.options.map(o=>html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> this.itemOption(item,o)}>${o}</div>`)}
+              ${item.options.map(o=>html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=> this.takeAction(o,item)}>${o}</div>`)}
             </div>
           </div>` : html`<div>${item.text}</div>`}
         </div>`)}

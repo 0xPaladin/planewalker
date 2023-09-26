@@ -216,11 +216,11 @@ const Armor = (opts={})=>{
   } 
 }
 
-const Resource = (region,opts={})=>{
-  let res = 'Trinket,Materials,Resource,Essence,Gold'
+const Materials = (region,opts={})=>{
+  let res = 'Trinket,Materials,Essence,Gold'
   let id = opts.id || chance.hash()
   let RNG = new Chance(id)
-  let {rank=Difficulty(RNG), what=WeightedString(res+"/4,1,2,1,2", RNG)} = opts
+  let {rank=Difficulty(RNG), what=WeightedString(res+"/4,2,1,2", RNG)} = opts
 
   let r = [what,rank]
 
@@ -234,31 +234,46 @@ const Resource = (region,opts={})=>{
   */
 
   /*
-  trinket 	rank
-  materials	type,d,rank
-  resource 	type,rank
-  essence 	type,d,rank
-  gold	amt
+  trinket 	rank, amt 
+  materials	rank, type,d
+  resource 	rank, type
+  essence 	rank, type,d
+  gold	rank, amt
   */
-  let d = RNG.weighted([4, 6, 8, 10, 12], [1, 2, 4, 2, 1])
-  if (what == "Resource") {
-    r.push(RNG.pickone(region.lookup("resource")).specifics[1])
-  } else if (what == "Essence") {
+  let d = (3+rank)*2
+  let gold = SumDice(["1d4","2d6","4d6+25","5d20+100","4d100+400"][rank],RNG)
+  
+  if (what == "Essence") {
     r.push(RNG.pickone(region.children.filter(c=>c.essence)).essence,d)
   } else if (what == "Materials") {
     r.push(RNG.pickone(["martial", "potions", "clothing", "equipment", "jewelry"]),d)
   }
   else if (what == "Gold") {
-    r.push(SumDice(["1d4","2d6","4d6+25","5d20+100","4d100+400"][rank],RNG))
+    r.push(gold)
+  }
+  else if (what == "Trinket") {
+    r.push(Math.round(gold/2))
   }
 
   return {
-    data : [id,"Resource",...r],
+    data : [id,"Materials",...r],
     get id () {return this.data[0]},
-    get enc () { return [1,2,2,0.5,this.data[4]/100][res.split(",").indexOf(this.data[2])] },
-    get text () { return `${this.data[2]} ${this.data[2]=='Trinket' ? "" : this.data[4]} [${this.data[3]}]`}
+    get what () {return this.data[2]},
+    get enc () { return [1,1,1,0.5,this.data[5]/100][res.split(",").indexOf(this.what)] },
+    get text () { return `${this.what} ${this.what=='Trinket' ? "" : this.data[4]}${'Essence,Materials'.includes(this.what) ? " d"+this.data[5] : ""}`}
   }
 }
+
+const Resource = (opts = {})=>{
+  return {
+    data : [opts.what,"Resource",opts.what,0],
+    get id () {return this.data[0]},
+    get enc () { return 1},
+    get text () { return `Resource: ${this.data[2]}`}
+  }
+}
+
+const Ally = (region,opts={})=>{}
 
 /*
   Give rewards based upon exploration 
@@ -303,7 +318,7 @@ const Rewards = (region,exploration)=>{
   exploration.reward = 'Trinket,Resource,Materials,Essence,Gold'.includes(what) ? Resource(region, {
     what,
     rank
-  }) : eq.includes(what) ? Equipment({
+  }) : what == "Ally" ? Ally(region,{rank}) : eq.includes(what) ? Equipment({
     what,
     rank
   }) : Gen[what]({
@@ -313,4 +328,4 @@ const Rewards = (region,exploration)=>{
   return exploration
 }
 
-export {Power, Potion, Equipment, Weapon, Armor, Rewards,Resource,Magical}
+export {Power, Potion, Equipment, Weapon, Armor, Rewards,Materials,Resource,Magical}

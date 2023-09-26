@@ -302,7 +302,7 @@ const Features = {
       text: who + " [" + alignment + "]",
       siteType: "origin unknown",
       scale: sz,
-      who,
+      short : who,
       mfcg,
     }
   }
@@ -371,11 +371,9 @@ class Region extends Area {
     //build random 
     BuildArray(nF, ()=>this.state.f.set(RNG.natural(), [null]))
 
-    //overal size of the area 
-    let size = this.children.reduce((sum,c)=>sum + c.size, 0)
+    //set children - adds all features / people 
+    this.children = [...this.state.f.entries()].map(([key,val])=>this.genFeature(key, ...val))
 
-    // cell rural population is suitability adjusted by szie, where size is 1 3mi hex ~ 5.8 sq mi  
-    this.pop = Math.round(this.s * size * 5.8)
     //add people for every settlement 
     let nS = this.lookup("settlement").length
     if(nS == 0) {
@@ -384,8 +382,15 @@ class Region extends Area {
     }
     BuildArray(nS, ()=>this.state.f.set(RNG.natural(), ["people"]))
 
-    //set children - adds all features / people 
+    //set children again, after people - adds all features / people 
     this.children = [...this.state.f.entries()].map(([key,val])=>this.genFeature(key, ...val))
+
+    //overal size of the area 
+    let size = this.children.reduce((sum,c)=>sum + c.size, 0)
+
+    // cell rural population is suitability adjusted by szie, where size is 1 3mi hex ~ 5.8 sq mi  
+    this.pop = Math.round(this.s * size * 5.8)
+    
 
     //get hex array
     this.setHex(this.size)
@@ -746,7 +751,7 @@ class Region extends Area {
 
     //always add settlement / people data 
     let sHtml = html`
-    <div>Settlements</div>
+    <div>Settlements: ${this.lookup("settlement").map(p=>p.short).join(", ")}</div>
     <div class="mh2">People: ${this.lookup("people").map(p=>p.short).join(", ")}</div>`
     res.push([sHtml, this.lookup("settlement")])
 
@@ -775,15 +780,13 @@ class Region extends Area {
 
     let {isKnown, features} = this.view()
 
+    //Show explorer options 
+    const ShowRegionOptions = (e) => this.app.updateState("dialog", ["characters", e.id, "RegionOptionsUI"].join("."))
+
     //ui for each explorer 
     const explorer = (e)=>html`
     <div class="flex items-center justify-between pa1 bb">
-      <div class="dropdown">
-        <div class="${e.regionOptions.length > 0 ? "bg-green" : "bg-gray"} br2 pointer b white underline-hover pa1 ph2">${e.name}</div>
-        <div class="dropdown-content bg-white ba bw1 pa1">
-          ${e.regionOptions.map(o=> html`<div class="link pointer dim underline-hover hover-orange ma1" onClick=${()=>e.regionAct(o)}>${o[1]}</div>`)}
-        </div>
-      </div>
+      <div class="${e.mayAct ? "bg-green" : "bg-gray"} br2 pointer b white underline-hover pa1 ph2" onClick=${()=>e.mayAct ? ShowRegionOptions(e) : null}>${e.name}</div>
       <div>@ ${e.location.atFeature.text}</div>
       <div>${e.coin}g / ${e.health}♥</div>
     </div>
