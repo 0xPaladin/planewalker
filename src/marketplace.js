@@ -50,11 +50,11 @@ const Pricing = (data, sale = false, need =[], surplus=[])=>{
 }
 
 //items for marketplace 
-const Marketplace = (region,settlement)=>{
+const Marketplace = (region,sid,scale)=>{
   let bought = region.app.game.bought 
   let Gen = Gear
   let time = Math.floor(region.app.game.time / 30)
-  let RNG = new Chance(Hash([region.id, "market" , settlement.id, time]))
+  let RNG = new Chance(Hash([region.id, "market" , sid, time]))
 
   //needs and surplus 
   let surplus = region.lookup("resource").map(r => r.specifics[0])
@@ -101,8 +101,7 @@ const Marketplace = (region,settlement)=>{
   Animals.map(trade=> MakeNPC(0,{what:"Animal",trade,size:"large"}))
 
   //market size based upon settlements
-  //max rank of what is available 
-  let max = settlement.scale + 2
+  let max = scale + 2
   //number of items at rank 
   let _ranks = BuildArray(max, (v,i)=>Math.pow(2, max - i))
 
@@ -148,13 +147,19 @@ const UI = (region)=>{
   let buyer = region.characters.find(c=>c.id == eid)
   let _forSale = buyer.inventory.filter(item => item.maySell)
   //marketplace of region 
-  let M = Marketplace(region,buyer.location.atFeature)
+  let settlement = buyer.location.atFeature
+  let M = Marketplace(region,settlement.id,settlement.scale)
 
   let pages = M.pages 
   if(eid != "0"){
     pages.push("Explorer","Sell Items")
   }
 
+  //add price to sale item 
+  const addPrice = (item) => {
+    item.price = Pricing(item.data,true,M.need,M.surplus)
+    return item 
+  }
   //may buy something  
   const _mayBuy = (price) => buyer.mayBuy(_page == "NPC" ? "npc" : "item",price)
 
@@ -165,28 +170,28 @@ const UI = (region)=>{
   const ExplorerMarket = () => html`
   <div>
     ${_mayBuy(5) && toDiscover.length>0 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("learnDark",toDiscover)}>Learn Dark of the Region (5g)</div>`: ""}
-    ${buyer.powersToCrystalize.map(p => html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("crystalize",p)}>${b.name} Crystalize > ${p.text} (10g)</div>`)}
-    ${game.coin > 100 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.transferCoin(100)}>Transfer 100g to ${buyer.name}</div>` : ""} 
+    ${buyer.toUnbond.map(p => html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("unbond",p)}>${buyer.name} Unbond > ${p.text} (10g)</div>`)}
+    ${game.coin > 100 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("transferCoin",100)}>Transfer 100g to ${buyer.name}</div>` : ""} 
   </div>
   `
 
   //each market place lists items - allows purchase if buyes have coin 
   //add explorer items to sell to market 
-  const ForSale = (item) => html`<div class="pointer underline-hover b tc bg-light-gray br2 mv1 pa1">1x ${item.text || item.short} (${Pricing(item.data,true,M.need,M.surplus)}g)</div>`
+  const ForSale = (item) => html`<div class="pointer underline-hover b tc bg-light-gray br2 mv1 pa1" onClick=${()=>buyer.marketSell(item,item.price)}>1x ${item.text || item.short} (${item.price}g)</div>`
   //manage basic items for purchase 
-  const Explore = (item)=> html`<div class="flex justify-center pointer underline-hover b tc bg-light-gray br2 mv1 pa1">${item.qty}x ${_buyers(item.price).length > 0 ? Buyers(item) : item.text || item.short} (${item.price}g)</div>`
+  const Explore = (item)=> html`<div class="${_mayBuy(item.price) ? "pointer underline-hover" : ""} b tc bg-light-gray br2 mv1 pa1" onClick=${()=> _mayBuy(item.price) ? buyer.marketBuy(item,region.id) : null}>${item.qty}x ${item.text || item.short} (${item.price}g)</div>`
   //build market place doesn't do buying 
   const Build = (item)=>html`<div class="b tc bg-light-gray br2 mv1 pa1">${item.qty}x ${item.text || item.short} (${item.price}g)</div>`
 
   return html`
   <div class="fr pointer dim underline-hover hover-red bg-gray br2 white b pa1" onClick=${()=>region.app.updateState("dialog","")}>X</div>
   <div style="width:600px">
-      <h3 class="ma0 mb1">${region.name} Marketplace</h3>
+      <h3 class="ma0 mb1">${buyer.name} @ ${region.name} Marketplace</h3>
       <div class="mh5">
         <div class="flex flex-wrap justify-center">${pages.map(p=>html`<div class="${p == _page ? "bg-gray white" : "bg-light-gray"} pointer b hover-bg-gray hover-white pa2" onClick=${()=>ShowPage(p)}>${p}</div>`)}</div>
       </div>
       <div class="w-100 pa2">
-        ${_page == "Explorer" && buyers.length>0 ? ExplorerMarket() : _page == "Sell Items" ? _forSale.map(ForSale) : M[_page].map(s=>game.mode == "Explorer" ?  Explore(s) : Build(s))}
+        ${_page == "Explorer" ? ExplorerMarket() : _page == "Sell Items" ? _forSale.map(item => ForSale(addPrice(item))) : M[_page].map(s=>game.mode == "Explorer" ?  Explore(s) : Build(s))}
       </div>
     </div>`
 }

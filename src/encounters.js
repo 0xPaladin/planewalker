@@ -250,7 +250,7 @@ const Generators = {
   },
   Giant(RNG=chance, o={}) {
     let {base, rarity, max, delta} = o
-    return ["People",RNG.pickone(base),[]]
+    return ["People",RNG.pickone(base),["huge"]]
   },
   Genie(RNG=chance, o={}) {
     return RNG.weighted(["Jann", "Djinni", "Dao", "Efreeti", "Marid"], [4, 2, 2, 1, 1])
@@ -439,7 +439,7 @@ const Encounter = (o={})=>{
 
   //format result 
   return {
-    data : [id,"NPC",short,rank,prof,tags],
+    data : [id,"NPC",short,rank,prof,tags,-1],
     get id () {return this.data[0]},
     get nameBase () {return Math.abs(parseInt(Hash(this.data),16)%43) },
     get base () {return this.tags[0]},
@@ -456,7 +456,7 @@ const Encounter = (o={})=>{
       let [trade,occ,alt] = this.data[4]
       return  {
         short : alt ? alt : occ.includes("Merchant") ? occ.split(",").join(" of ") : occ,
-        skills : Skilled[occ] ? Skilled[occ].split(", ") : null,
+        skills : Skilled[occ] ? Skilled[occ].split(",") : [],
         toHire : ToHire[trade] * m 
       }
     },
@@ -465,7 +465,20 @@ const Encounter = (o={})=>{
     get hasJobs () { return 'Dragon,Fey,People,Outsider'.includes(this.base)},
     get short () { return `${this.data[2]} ${this.trade ? this.trade.short : this.adventurer ? this.adventurer.join("/") : ""}`},
     get text () { return `${this.data[2]} ${this.trade ? this.trade.short : this.adventurer ? this.adventurer.join("/") : ""} ${DieRank[this.rank]}`},
-    get price () {return this.trade ? this.trade.toHire : null }
+    //price to hire 
+    get price () {return this.trade ? this.trade.toHire : null },
+    //load that they can carry 
+    get load () {
+      let sz = ["small","large","huge","gargantuan"]
+      let _sz = this.tags.find(t => sz.includes(t))
+      let m = _sz ? [0.5,3,10,50][sz.indexOf(_sz)] : 1 
+      return 10 * m 
+    },
+    //time remains if hired 
+    timeRemain (now) {
+      let t = this.data[6]
+      return t == -1 ? 0 : t-now 
+    }
   }
 }
 

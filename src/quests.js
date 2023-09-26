@@ -102,6 +102,8 @@ import*as Details from "./data.js"
   Mo,Br,Wp,Sp,Ar,It,Al,Rs,Tk 
 */
 
+const DiceDifficulty = [[4,4,6,6],[4,6,6,6,8,8],[6,8,8,8,10,10],[8,10,10,10,12,12],[10,10,12,12,12,12],[12,12,12,12,12]]
+
 const ExploreActions = {
   //Cypher
   "Hidden Trails": "Study/Notice,Move,Physique/Muscle,Insight,Shoot",
@@ -202,6 +204,9 @@ const Exploration = (where,safety,diff=null)=>{
   //get actions 
   let actions = GetActions(focus)
 
+  //get dice 
+  let dice = RNG.shuffle(DiceDifficulty[rank]).slice(0,rank < 1 ? 1 : rank).map(v => "d"+v)
+
   return {
     challenge,
     focus,
@@ -210,6 +215,7 @@ const Exploration = (where,safety,diff=null)=>{
     actions,
     where,
     diff,
+    dice,
     get short () { return `${this.challenge} (${this.focus}) [${this.diff}]; Find: ${this.reward[0]}`}
   }
 }

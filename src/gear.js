@@ -47,6 +47,13 @@ const MagicItemText = {
   multiclass (rank,d) { return `multiclass ${d}`},
 }
 
+class Item {
+  constructor (d) {
+    this.data = d 
+  }
+  get id () {return this.data[0]}
+}
+
 const Power = (opts={})=>{
   let id = opts.id || chance.hash()
   let RNG = new Chance(id)
@@ -77,6 +84,7 @@ const Power = (opts={})=>{
     get id () {return this.data[0]},
     get enc () {return this.mayEquip ? 0.1 : 1},
     isKnown : false,
+    get challenge () { return this.isKnown ? this.data[5] : null},
     get mayEquip () {return this.data[7] },
     get text () { return `${this.data[2]}: ${this.data[4]} ${this.isKnown ? "("+this.data[5]+")" : ""} ${DieRank[this.data[3]]}` } 
   }
@@ -127,6 +135,10 @@ const Magical = (opts={})=>{
   return {
     data : [id,"Magical",what,rank,form,_ability,extra],
     get id () {return this.data[0]},
+    isKnown : false,
+    get challenge () { return this.isKnown ? this.data[6] : null},
+    get actions () { return this.isKnown ? [this.data[6]] : [null]},
+    get power () { return this.isKnown ? [this.data[6]] : [null]},
     enc : 1,
     get text () { return `Magical ${this.data[4]} ${MagicItemText[this.data[5]](this.data[3],this.data[6])}`} 
   }
@@ -157,6 +169,8 @@ const Equipment = (opts={})=>{
   return {
     data : [id,"Equipment", what, rank, d, challenge, ""],
     get id () {return this.data[0]},
+    get challenge () { return this.data[5]},
+    get power () { return this.data[5]},
     get enc () { return [0.5,3,1,2][eq.split(",").indexOf(this.data[2])]},
     get text () { return `${this.data[2]} (${this.data[5]}) ${DieRank[this.data[3]]}`}
   }
@@ -186,6 +200,7 @@ const Weapon = (opts={})=>{
   return {
     data : [id,"Weapon", what, rank, form, d],
     get id () {return this.data[0]},
+    get challenge () { return "Monster"},
     get enc () { return [0.5,0.5,1,2,0.5,1,2][wp.split(",").indexOf(this.data[2])] },
     get text () { return `${this.data[4]} ${DieRank[this.data[3]]}`}
   } 
@@ -241,7 +256,7 @@ const Materials = (region,opts={})=>{
   gold	rank, amt
   */
   let d = (3+rank)*2
-  let gold = SumDice(["1d4","2d6","4d6+25","5d20+100","4d100+400"][rank],RNG)
+  let gold = SumDice(["1d4","2d6","4d6+25","5d20+100","4d100+400","8d200+1600"][rank],RNG)
   
   if (what == "Essence") {
     r.push(RNG.pickone(region.children.filter(c=>c.essence)).essence,d)

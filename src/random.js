@@ -3,6 +3,14 @@ const RandBetween = (min,max,RNG=chance)=>RNG.integer({
   min,
   max
 })
+const DiceArray = (dice,RNG=chance) => {
+  let res = dice.map(d=> {
+    let n = Number(d.split("d")[1])
+    let r = RandBetween(1,n,RNG)
+    return [d,r,0]
+  }).sort((a,b) => b[1]-a[1])
+  return res
+}
 const SumDice = (dice,RNG=chance)=>{
   let[d,b=0] = dice.split("+")
   return Number(b) + RNG.rpg(d, {
@@ -59,4 +67,4 @@ function capitalize(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-export {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, SpliceOrPush, WeightedString, capitalize, chance}
+export {RandBetween, SumDice, Likely, Difficulty, ZeroOne, Hash, BuildArray, SpliceOrPush,DiceArray, WeightedString, capitalize, chance}
