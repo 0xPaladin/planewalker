@@ -53,15 +53,19 @@ let Game = {
   "id": "",
   "mode" : "Explorer",
   "name": "",
-  "time": 1,
   //days 
-  "coin": 2000,
-  //gold 
+  "time": 1,
+  "fame" : [0,0,0,0,0,0,0],
+  //items bought 
   "bought" : {},
+  //store for ids 
   "known" : new Set(),
   "factions": new Set(),
   "areas": new Set(),
   "characters": new Set(),
+  //explorers available to join 
+  "explorers" : new Map(),
+  //log for information 
   "log": []
 }
 
@@ -163,6 +167,10 @@ class App extends Component {
       id: RNG.hash()
     }))
 
+    //set initial explorers -- last for 30 days 
+    BuildArray(5, () => Game.explorers.set([RNG.hash(),1].join(),1))
+    Game.explorers.forEach((day,eid) => new Gen.Explorer(this,{id:eid}))
+    
     //set all portals 
     this.regions.forEach(r=>r.portal = RNG)
 
@@ -170,21 +178,8 @@ class App extends Component {
     Game.id = id
     Game.name = Gen.Names.Region(id).short
 
-    this.setExplorers()
-
     console.log(this.areas, this.factions, this.characters)
     this.refresh()
-  }
-
-  async setExplorers () {
-    let RNG = new Chance([Game.id,Math.floor(Game.time/7)].join("."))
-    BuildArray(5,()=> {
-      let id = RNG.hash()
-      if(Game.characters.has(id)){
-        return
-      }
-      new Gen.Explorer(this,{id})
-    })
   }
 
   save(_set,id) {
@@ -219,7 +214,13 @@ class App extends Component {
     //write state 
     Object.keys(Game).forEach(k=> Game[k] = sets.includes(k) ? new Set(game[k]) : game[k] || Game[k])
 
-    this.setExplorers()
+    //run through explorers and remove those greater than 30 days 
+    Game.explorers.forEach((day,eid) => {
+      if(Game.time-day > 30) {
+        Game.explorers.delete(eid)
+        delete this.characters[eid]
+      }
+    })
 
     //load saved 
     sets.forEach(s => Game[s].forEach(async id => {
@@ -258,8 +259,18 @@ class App extends Component {
     if(Game.time % 30 == 1){
       //new month 
       Game.bought = {} 
+      //5 new explorers
+      BuildArray(5, () => Game.explorers.set(RNG.hash(),Game.time))
+      Game.explorers.forEach((day,eid) => new Gen.Explorer(this,{id:eid}))
     }
-    this.setExplorers ()
+    //run through explorers and remove those greater than 30 days 
+    Game.explorers.forEach((day,eid) => {
+      if(Game.time-day > 30) {
+        Game.explorers.delete(eid)
+        delete this.characters[eid]
+      }
+    })
+    //save 
     this.save(null)
   }
 
@@ -269,6 +280,10 @@ class App extends Component {
 
   get game() {
     return Game
+  }
+
+  get gold () {
+    return 0 
   }
 
   get primes() {

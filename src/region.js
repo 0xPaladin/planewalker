@@ -788,7 +788,7 @@ class Region extends Area {
     <div class="flex items-center justify-between pa1 bb">
       <div class="${e.mayAct ? "bg-green" : "bg-gray"} br2 pointer b white underline-hover pa1 ph2" onClick=${()=>e.mayAct ? ShowRegionOptions(e) : null}>${e.name}</div>
       <div>@ ${e.location.atFeature.text}</div>
-      <div>${e.coin.toFixed(1)}g / ${e.health}♥</div>
+      <div>${Number(e.coin.toFixed(1))*10}s / ${e.health}♥</div>
     </div>
     `
 

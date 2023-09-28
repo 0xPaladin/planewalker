@@ -84,7 +84,7 @@ import*as Details from "./data.js"
   Attack - Muscle,Shoot/Physique,Move,Resolve/Command 
   
   *Obstacle*
-  Labor - Muscle/Study,Focus,Phsyique/Command,Tinker 
+  Labor - Muscle/Study,Focus,Physique/Command,Tinker 
   Precarious - Move/Notice,Insight,Physique/Focus,Finesse,Command    
   
   *People*
@@ -94,7 +94,7 @@ import*as Details from "./data.js"
   
   *Wilderness* 
   Hidden Trails - Study/Notice,Move,Physique/Muscle,Insight,Shoot 
-  Environment - Phsyique/Resolve,Move,Notice/Insight   
+  Environment - Physique/Resolve,Move,Notice/Insight   
 
   [["Hunt", "Move", "Muscle"],["Finesse", "Sneak", "Tinker"],["Analyze", "Focus", "Sway"]]
   
@@ -102,26 +102,26 @@ import*as Details from "./data.js"
   Mo,Br,Wp,Sp,Ar,It,Al,Rs,Tk 
 */
 
-const DiceDifficulty = [[4,4,6,6],[4,6,6,6,8,8],[6,8,8,8,10,10],[8,10,10,10,12,12],[10,10,12,12,12,12],[12,12,12,12,12]]
+const DiceDifficulty = [[4,4,6,6],[4,6,6,6,8,8],[6,6,8,8,8,8,10,10],[8,8,10,10,10,10,12,12],[10,10,10,12,12,12,12,12],[12,12,12,12,12,12,12]]
 
 const ExploreActions = {
   //Cypher
-  "Hidden Trails": "Study/Notice,Move,Physique/Muscle,Insight,Shoot",
+  "Track": "Sneak,Move/Shoot,Study,Notice/Insight,Finesse",
   "Design": "Study,Focus/Tinker,Notice/Insight",
   "Puzzle": "Study,Tinker/Focus,Finesse,Notice,Muscle/Move,Insight",
   "Curse": "Study,Resolve/Insight,Notice,Focus/Physique",
   //Mechanisms
   "Device": "Tinker/Finesse,Study/Insight,Notice,Muscle",
   "Trap": "Tinker,Notice/Finesse,Study,Insight/Move,Physique,Resolve",
-  //Monster
-  "Track": "Sneak,Move/Shoot,Study,Notice/Insight,Finesse",
+  //Combat
   "Thieves": "Insight/Finesse,Sneak,Command/Notice,Sway,Muscle,Shoot",
-  "Attack": "Muscle,Shoot/Physique,Move,Resolve/Command",
+  "Melee": "Muscle/Physique,Move,Resolve/Shoot,Command",
+  "Firefight": "Shoot,Move/Sneak,Notice,Command/Muscle,Resolve",
   //Obstacle
-  "Labor": "Muscle/Study,Focus,Phsyique/Command,Tinker",
+  "Labor": "Muscle/Study,Focus,Physique/Command,Tinker",
   "Precarious": "Move/Notice,Insight,Physique/Focus,Finesse,Command",
-  "Environment": "Phsyique/Resolve,Move,Notice/Insight",
-  //People
+  "Environment": "Physique/Resolve,Move,Notice/Insight",
+  //Diplomacy
   "Treaty": "Bond,Sway/Command,Notice,Study/Finesse",
   "Trade": "Sway/Bond,Notice,Command,Study/Insight,Resolve",
   "Defamation": "Bond,Sway,Command/Insight,Notice,Study/Resolve",
@@ -155,22 +155,22 @@ const Exploration = (where,safety,diff=null)=>{
     , skills = [];
   const Focus = {
     'Cypher'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Design', 'Puzzle','Hidden Trails'] : ['Curse'])
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Design', 'Puzzle','Track'] : ['Curse'])
       return what
     },
     'Mechanism'() {
       let what = RNG.pickone(Likely(safe, RNG) ? ['Device'] : ['Trap'])
       return what
     },
-    'Monster'() {
-      let what = RNG.pickone(Likely(safe, RNG) ? ['Thieves','Track'] : ['Attack'])
+    'Combat'() {
+      let what = RNG.pickone(Likely(safe, RNG) ? ['Thieves'] : ['Melee','Firefight'])
       return what
     },
     'Obstacle'() {
       let what = RNG.pickone(Likely(safe, RNG) ? ['Labor'] : ['Precarious','Environment'])
       return what
     },
-    'People'() {
+    'Diplomacy'() {
       let what = RNG.pickone(Likely(safe, RNG) ? ['Trade', 'Treaty'] : ['Defamation'])
       return what
     }
@@ -184,7 +184,7 @@ const Exploration = (where,safety,diff=null)=>{
   }
 
   //exploration challenges  
-  const challenges = ['Cypher', 'Monster', 'Mechanism', 'People', 'Obstacle']
+  const challenges = ['Cypher', 'Combat', 'Mechanism', 'Diplomacy', 'Obstacle']
   const types = {
     "creature": [1, 5, 0, 1, 3],
     "encounter": [1, 5, 0, 1, 3],
@@ -201,21 +201,31 @@ const Exploration = (where,safety,diff=null)=>{
   // assign challenge group, difficulty, action 
   let [challenge,focus,rank,check] = ExArray(types[where])
 
-  //get actions 
-  let actions = GetActions(focus)
-
-  //get dice 
-  let dice = RNG.shuffle(DiceDifficulty[rank]).slice(0,rank < 1 ? 1 : rank).map(v => "d"+v)
+  //determine cohesion - max stress challenge can take 
+  let cohesion = rank == 0 ? 1 : 2*rank
 
   return {
     challenge,
     focus,
     rank,
     check,
-    actions,
     where,
     diff,
-    dice,
+    cohesion,
+    //actions to beat challenge 
+    get actions () { return GetActions(this.focus) }, 
+    //dice to use for the challenge 
+    get dice () {
+      //keep 
+      let k = rank < 1 ? 1 : rank 
+      //number to roll 
+      let n = rank+1 
+      //return dice 
+      return {
+        k,
+        pool : RNG.shuffle(DiceDifficulty[rank]).slice(0,n).map(v => "d"+v)
+      } 
+    },
     get short () { return `${this.challenge} (${this.focus}) [${this.diff}]; Find: ${this.reward[0]}`}
   }
 }

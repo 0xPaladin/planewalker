@@ -437,14 +437,16 @@ const Encounter = (o={})=>{
   let age = WeightedString("child,youth,adult,old,elderly/1,2,4,2,1",RNG)
   tags.push(age)
 
-  //format result 
+  //format result
+  //[id,"NPC",short,rank,prof,tags,timeEmployed,damage]
   return {
-    data : [id,"NPC",short,rank,prof,tags,-1],
+    data : [id,"NPC",short,rank,prof,tags,-1,0],
     get id () {return this.data[0]},
     get nameBase () {return Math.abs(parseInt(Hash(this.data),16)%43) },
     get base () {return this.tags[0]},
     get people () {return this.tags[1]},
     get rank () {return this.data[3]},
+    get die () {return DieRank[this.rank]},
     get tags () {return this.data[5]},
     get outsider () {return this.base == "Outsider" ? this.tags[1] : null},
     get trade () { 
@@ -464,7 +466,7 @@ const Encounter = (o={})=>{
     get lair () { return 'Fey,People,Outsider'.includes(this.base) },
     get hasJobs () { return 'Dragon,Fey,People,Outsider'.includes(this.base)},
     get short () { return `${this.data[2]} ${this.trade ? this.trade.short : this.adventurer ? this.adventurer.join("/") : ""}`},
-    get text () { return `${this.data[2]} ${this.trade ? this.trade.short : this.adventurer ? this.adventurer.join("/") : ""} ${DieRank[this.rank]}`},
+    get text () { return `${this.data[2]} ${this.trade ? this.trade.short : this.adventurer ? this.adventurer.join("/") : ""} ${this.die}`},
     //price to hire 
     get price () {return this.trade ? this.trade.toHire : null },
     //load that they can carry 
@@ -478,6 +480,19 @@ const Encounter = (o={})=>{
     timeRemain (now) {
       let t = this.data[6]
       return t == -1 ? 0 : t-now 
+    },
+    takeDamage (x) {
+      this.data[7] += x 
+      return this.data[7]
+    },
+    get health () {
+      let dmg = this.data[7]
+      //basic 2 * rank 
+      let max = this.rank == 0 ? 1 : this.rank*2 
+      return {
+        now : max-dmg,
+        max 
+      }
     }
   }
 }

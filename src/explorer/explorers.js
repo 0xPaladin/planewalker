@@ -2,7 +2,7 @@ var DB = localforage.createInstance({
   name: "Characters"
 });
 
-import {RandBetween, SumDice, Likely, BuildArray,DiceArray, Hash, chance} from "../random.js"
+import {RandBetween, SumDice, Likely, BuildArray,DiceArray,WeightedString, Hash, chance} from "../random.js"
 import*as Names from "../names.js"
 
 /*
@@ -194,15 +194,15 @@ const ActionsBySave = {
 const AllActions = ["Finesse", "Move", "Muscle", "Sneak", "Notice", "Shoot", "Study", "Tinker", "Bond", "Command", "Focus", "Sway"]
 
 const ClassAdvance = {
-  "Artificer": ["Tinker,Tinker,Focus"],
-  "Barbarian": ["Muscle,Muscle,Move"],
-  "Bard": ["Sway,Sway,Bond"],
-  "Cleric": ["Focus,Study,Notice"],
-  "Fighter": ["Muscle,Shoot,Command"],
-  "Monk": ["Muscle,Move,Focus"],
-  "Ranger": ["Shoot,Shoot,Notice"],
-  "Rogue": ["Move,Finesse,Sway"],
-  "Wizard": ["Focus,Focus,Study"],
+  "Artificer": ["Tinker,Finesse,Focus","Tinker","Focus","random","Tinker","random","random","Tinker","random","random"],
+  "Barbarian": ["Muscle,Move,Shoot","Muscle","Move","random","Muscle","random","random","Muscle","random","random"],
+  "Bard": ["Sway,Command,Bond","Sway","Bond","random","Sway","random","random","Sway","random","random"],
+  "Cleric": ["Focus,Bond,Notice","Focus","Bond","random","Focus","random","random","Focus","random","random"],
+  "Fighter": ["Muscle,Shoot,Command","Muscle","Command","random","Muscle","random","random","Muscle","random","random"],
+  "Monk": ["Muscle,Move,Focus","Move","Muscle","random","Move","random","random","Move","random","random"],
+  "Ranger": ["Shoot,Move,Notice","Shoot","Notice","random","Shoot","random","random","Shoot","random","random"],
+  "Rogue": ["Sneak,Finesse,Move","Sneak","Move","random","Sneak","random","random","Sneak","random","random"],
+  "Wizard": ["Focus,Study,Tinker","Focus","Study","random","Focus","random","random","Focus","random","random"],
 }
 
 //weapon, armor, equipment, power  
@@ -218,13 +218,13 @@ const StartingGear = {
   "Wizard": ["Power.Spell", "Equipment.Implements"],
 }
 const DieRank = ["d4", "d6", "d8", "d10", "d12", "d14"]
-const XP = [0, 6, 15, 24, 36, 51, 69, 90, 114, 141, 171, 204, 240, 279, 321, 366, 414, 465, 519, 576]
 //cost in gp - per month 
 const Cost = [150, 330, 600, 870, 1230, 1680, 2220, 2850, 3570, 4380, 5280, 6270, 7350, 8520, 9780, 11130, 12570, 14100, 15720, 17430]
 
 class Explorer {
   constructor(app, opts={}) {
     let {id=chance.hash()} = opts
+    let [_id,_lv =0] = id.split(",")
 
     this.app = app
     this.id = id
@@ -234,8 +234,8 @@ class Explorer {
     this.state = {
       xp: 0,
       action: 0,
+      //current, max 
       health: [2, 2],
-      hired: null,
       coin: 0,
       quests: [],
       inventory: [],
@@ -243,6 +243,10 @@ class Explorer {
     }
 
     let RNG = new Chance(this.id)
+
+    //starting level
+    _lv = Number(_lv) != 0 ? Number(_lv) : WeightedString('1,2,3,4,5/7,2,1,0.5,0.2',RNG)
+    this.state.xp = Math.pow(10,_lv-1)
 
     //explorer stuff 
     this._actions = {}
@@ -253,10 +257,11 @@ class Explorer {
       what: "PCs"
     })
     this.name = Names.Diety(RNG)
-    this._classes = [app.gen.Professions.adventurer(RNG)[0]]
+    this._adv = app.gen.Professions.adventurer(RNG)[0]
 
     //add initial Gear
-    StartingGear[this._classes[0]].forEach(g=>{
+    this.state.coin = SumDice("3d6",RNG)
+    StartingGear[this._adv].forEach(g=>{
       let id = RNG.natural()
       let[gen,what] = g.split(".")
       let item = app.gen[gen]({
@@ -286,11 +291,11 @@ class Explorer {
 
   get level() {
     let _xp = this.state.xp
-    return XP.reduce((lv,xp,i)=>xp <= _xp ? i + 1 : lv, 1)
+    return 1+Math.floor(Math.log10(_xp))
   }
 
-  get classes() {
-    return this._classes
+  get advClass() {
+    return this._adv
   }
 
   get inventory() {
@@ -343,6 +348,12 @@ class Explorer {
     return this.state.health[0]
   }
 
+  set coin(d) {
+    return this.state.coin += d 
+    //save 
+    this.app.save("characters", this.id)
+  }
+  
   get coin() {
     return this.state.coin
   }
@@ -431,23 +442,28 @@ class Explorer {
     return Cost[this.level - 1]
   }
 
-  get isHired() {
-    let {hired} = this.state
+  get isHired () {
+    return this.app.game.characters.has(this.id)
+  }
 
-    return hired != null && this.app.game.time - hired <= 30
+  get mayHire () {
+    let {fame, characters} = this.app.game
+    let _fame = fame.slice() 
+    //get characters at rank and reduce fame 
+    characters.forEach((atR,id) => _fame[Math.floor(this.app.characters[id].level/2)]--)
+    //determine fame rank for explorer  
+    let reqFameRank = Math.floor(this.level / 2)
+
+    //allowed to have more 0 level explorers 
+    return _fame[reqFameRank] > (reqFameRank == 0 ? -3 : 0) && !this.isHired
   }
 
   hire() {
     let game = this.app.game
-    //cost in gold  
-    let cost = this.cost
-    if (game.coin < cost || this.isHired)
-      return
-
-    //pay cost for the month 
-    game.coin -= cost
     //hire 
     this.state.hired = game.time
+    //remove from explorer roster 
+    game.explorers.delete(this.id)
     //save and refresh 
     this.app.save("characters", this.id)
   }
@@ -470,17 +486,15 @@ class Explorer {
     let _act = this._actions = {}
     let RNG = new Chance(this.id)
 
-    //allways 4 random action advances 
-    for (let i = 0; i < 4; i++) {
-      let a = RNG.pickone(AllActions)
-      _act[a] = _act[a] ? _act[a] + 1 : 1
-    }
-    //write intial actions based upon level advances 
-    ClassAdvance[this._classes[0]].forEach((adv,i)=>{
-      if (i >= lv) {
-        return
-      }
-      adv.split(",").forEach(a=>_act[a] = _act[a] ? _act[a] + 1 : 1)
+    //always 4 random action advances 
+    RNG.shuffle(AllActions).slice(0,4).forEach(a => _act[a] = _act[a] ? _act[a] + 1 : 1)
+
+    //write actions based upon level advances 
+    ClassAdvance[this._adv].slice(0,lv).forEach(adv=>{
+      adv.split(",").forEach(a=> {
+        a = a=="random" ? RNG.pickone(AllActions) : a 
+        _act[a] = _act[a] ? _act[a] + 1 : 1
+      })
     }
     )
 
@@ -495,17 +509,58 @@ class Explorer {
     return Object.values(ActionsBySave).map((list,i)=>list.map(a=>[a, this.actions[a]]))
   }
 
+  /*
+    Exploration Functions 
+  */
+
   //what inventory may be added during an exploration 
-  get mayAddInventory () {
-    let {exp,where,selected=[null]} = this.explore
-    let {actions,challenge,focus} = exp 
+  get exploreInventory () {
+    let {exp,where,oppAct,opp,act} = this.explore
+    let {cohesion,challenge,focus,rank} = exp 
+
+    let spell = "" 
+    this.explore.support.forEach((item,id) => item.data[2] == "Spell" ? spell="Spell" : null)
+    
+    let maySupport = {}, mayTakeDamage = {};
 
     //get allies with action skill 
-    let allies = this.allies.filter(a => a.trade.skills.includes(selected[0])).map(a => [a.id,a])
+    let allies = this.allies.forEach(a =>{
+      if(a.trade.skills.includes(act)){
+        maySupport[a.id] = a 
+      }
+      //all allies can take damage 
+      mayTakeDamage[a.id] = a 
+    }) 
     //get items with action 
-    let items = this.inventory.filter(item => (item.challenge && item.challenge == challenge) || (item.actions && item.actions.includes(selected[0]))).map(item => [item.id,item])
+    let items = this.inventory.forEach(item => {
+      if(item.options !== null){
+        return
+      }
+      
+      let ic = item.challenge
+      if( [challenge,act,focus,spell].join().includes(ic)){
+        maySupport[item.id] = item 
+      }
+      if(item.data[1] == "Armor" && 'Trap,Thieves,Melee,Firefight,Precarious'.includes(focus)){
+        mayTakeDamage[item.id] = item 
+      }
+    })
 
-    return Object.fromEntries([...allies,...items])
+    return {maySupport,mayTakeDamage}
+  }
+
+  markUse () {
+    let marks = 'Gear,Implements,Tools,Weapon,Essence'
+    let destroys = 'Documents,Contact'
+    let i = this.state.inventory.map(item=>item[0])
+    let {support} = this.explore
+
+    support.forEach(item => {
+      let what = item.data[2]
+      let r = marks.includes(what) ? RandBetween(1,item.usage) : 99 
+      //remove as necissary 
+      //this.state.inventory.splice(i, 1)
+    })
   }
 
   /*
@@ -540,12 +595,19 @@ class Explorer {
       //save and refresh 
       this.app.updateState("dialog", "")
       this.app.save("characters", this.id)
-    } else if (act == "Explore") {
+    }
+      //establish exploration 
+    else if (act == "Explore") {
       let time = 'settlement,dungeon'.includes(d.what) ? 0.125 : 1
+      let exp = this.location.region.explore(d)
       this.explore = {
         where: d,
-        exp: this.location.region.explore(d),
-        selected : [],
+        exp,
+        oppAct : exp.actions,
+        opp : exp.dice,
+        act : "",
+        support : new Map(),
+        takeDamage : new Map(),
         roll : []
       }
       this.app.updateState("dialog", ["characters", this.id, "ExploreUI"].join("."))
@@ -624,75 +686,203 @@ class Explorer {
   get ExploreUI () {
     let html = this.app.html
     let _act = Object.assign({},this.actions,this.saves) 
-    let {exp,where,selected=[null]} = this.explore
+    let {exp,where,oppAct,opp,act,support,takeDamage} = this.explore
     let [player=[],against=[]] = this.explore.roll
-    let {actions,challenge,focus,dice,rank} = exp 
+    let {cohesion,challenge,focus,rank} = exp 
+    //current explore opposition dice  
+    let {k,pool} = opp
     //what inventory an be added to explore 
-    let mayAdd = this.mayAddInventory
+    let {maySupport,mayTakeDamage} = this.exploreInventory
     //dice string 
-    let eDice = selected.map(s => _act[s] ? _act[s][1] : mayAdd[s].die)    
+    let eDice = [act != "" ? _act[act][1] : "d4"]
+    support.forEach(item => eDice.push(item.die))
+    //number to keep 
+    let ek = 1+ this.state.inventory.filter(item => support.has(item[0]) && item[1] == "NPC").length 
+    //determine stress to challenge and damage to player 
+    let stress = 0 
+    let damage = against.reduce((sum,v,i) => sum+(i<k && v[1]>3 ? 1 : 0),0)
+    let soak = 0
+    //account for player roll  
+    player.forEach(d => d[2] == 0 ? stress++ : d[2]== 1 ? soak++ : null)  
+    //account for damage taken 
+    takeDamage.forEach((v,id) => soak+=v)
 
-    //maange attack defense 
+    //determine if may flee 
+    let mayFlee = player.length == 0 
+    let showAssignDamage = player.length > 0 && (soak == damage) 
+
+    //assign damage and reset / reward 
+    const AssignDamage = () => {
+      //apply stress to challenge 
+      exp.cohesion -= stress
+      //TODO take damage 
+      takeDamage.forEach((v,id) => null)
+      //TODO mark usage for items 
+      support.forEach(id => null)
+      //reset exploration 
+      Object.assign(this.explore,{
+        oppAct : exp.actions,
+        opp : exp.dice,
+        act : "",
+        support : new Map(),
+        takeDamage : new Map(),
+        roll : []
+      })
+
+      //reward and clear 
+      if(exp.cohesion <= 0){
+        //add 
+        let data = exp.reward.data.slice()
+        if (data[1] == "NPC") {
+          //hired for a month 
+          data[6] = this.app.game.time + 30
+          this.state.inventory.push(data)
+          this.app.notify(`A ${exp.reward.text} has agreed to join ${this.name}`)
+        }
+        else if (data[2] == "Explorer") {
+          let opts = {id:data[0]}
+          //add an explorer
+          let C = new Explorer(this.app,opts)
+          C.hire()
+          this.app.notify(`${C.name} has joined your explorer roster.`)
+        }
+        else {
+          //add to inventory
+          this.state.inventory.push(data)
+          //notify save and update 
+          this.app.notify(`You have won ... ${exp.reward.text}`)
+        }
+        this.app.save("characters", this.id)
+        //close dialog 
+        this.app.updateState("dialog","")
+        delete this.explore
+      }
+
+      this.app.refresh()
+    }
+    
+    //handle who/what will take damage 
+    const TakeDamage = (what,amt) => {
+      if(damage == soak && amt>0)  
+        return
+      let dmg = (takeDamage.get(what.id) || 0) + amt 
+      if(dmg <= 0){
+        takeDamage.delete(what.id)
+      }
+      else {
+        takeDamage.set(what.id,dmg)
+      }
+      
+      this.app.refresh()
+    }
+    
+    const Flee = () => {
+      this.app.updateState("dialog","")
+    }
+
+    //manage attack defense 
     const SetAtkDef = (v,pa,i) => {
-      let PA = this.explore.roll[pa == "p" ? 0 : 1]
-      PA[i][2] = 1-v 
+      let PA = this.explore.roll[0]
+      
+      PA[i][2] = PA[i][2] == v ? -1 : v 
       this.app.refresh()
     }
     
     //manage rolling 
     const Roll = () => {
-      this.explore.roll = [DiceArray(eDice),DiceArray(dice)]
+      //TBD take wear and tare rolls on equipment 
+      this.explore.roll = [DiceArray(eDice),DiceArray(pool)]
       this.app.refresh()
     }
     
     //manages selected action / gear / allies 
-    const AddSelected = (a,isAction = false) => {
-      this.explore.roll = [[],[]]
-      if(isAction){
-        this.explore.selected[0] = a
+    const AddSelected = (a) => {
+      if(typeof a == "string") {
+        this.explore.act = a
       }
-      else if (selected.includes(a)){
-        this.explore.selected.splice(selected.indexOf(a),1)
+      else if (this.explore.support.has(a.id)) {
+        //delete Implements if spell deleted 
+        support.forEach((item,id) => a.data[2] == "Spell" && item.data[2] == "Implements" ? this.explore.support.delete(id) : null)
+        this.explore.support.delete(a.id)
       }
       else {
-        this.explore.selected.push(a)
+        this.explore.support.set(a.id,a)
       }
       this.app.refresh()
     }
 
+    //individual damage allotment 
+    const DamageTaker = (what,txt,health) => html`
+    <div class="flex b items-center">
+      <div class="bg-light-gray w-100 pointer tc b pa1">${txt} ${health}♥</div>
+      <div class="pointer bg-green fw9 tc pa1 ph3" onClick=${()=> TakeDamage(what,1)}>+</div>
+      ${!takeDamage.has(what.id) ? "" : html`
+      <div class="bg-light-gray tc b pa1 ph2">${takeDamage.get(what.id)}♥</div>
+      <div class="pointer bg-green tc b pa1 ph3" onClick=${()=> TakeDamage(what,-1)}>-</div>`}
+    </div>`
+    //damage listing 
+    const DamageList = html`
+    <div class="mh1">
+      <div class="b">Who/What will take the damage?</div>
+      ${DamageTaker(this,this.name,this.health)}
+      ${Object.values(mayTakeDamage).map(item => DamageTaker(item,item.text,item.health.now))}
+    </div>`
+
     //displays attack/defense image for a successful roll 
     let dImg = ["./img/explore-swords.svg","./img/explore-shield.svg"]
     const AtkDef = (v,pa,i) => html`
-    <div class="flex items-center mh1">
-      ${dImg.map((img,j) => html`<div class="${v==j ? "bg-green" : "bg-gray"} pointer pa1" onClick=${()=>SetAtkDef(v,pa,i)}><img class="db" src=${img} height="17"></img></div>`)}
+    <div>
+      ${dImg.map((img,j) => html`<div class="${v==j ? "bg-green" : "bg-gray"} pointer pa1" onClick=${()=>SetAtkDef(j,pa,i)}><img class="db" src=${img} height="17"></img></div>`)}
     </div>`
     //displays image of the die with the value of the roll over it 
-    const DiceImg = ([d,val = -1,atk],pa,i) => html`
-    <div>
+    const DiceImg = ([d,val = -1,atk],pa="a",i) => html`
+    <div class="flex items-center justify-center">
+      ${pa == "p" && val > 3  && i < ek ? AtkDef(atk,pa,i) : "" }
       <div class="relative tc mh1">
         <img src=${"./img/"+d+(val != -1 ? "-outline" : "-fill")+".svg"} width="50"></img>
         ${val == -1 ? "" : html`<div class="centered f2 b ${val >= 4 ? "green" : "red"}">${val}</div>`}
       </div>
-      ${val > 3 ? AtkDef(atk,pa,i) : "" }
+    </div>`
+
+    //dice display 
+    const DiceDisplay = html`
+    <div class="flex items-center justify-center">
+      <div class="tc mh1">
+        <div>Keep: ${ek}</div>
+        <div class="flex">${player.length > 0 ? player.map((d,i) => DiceImg(d,"p",i)) : eDice.map(d => DiceImg([d]))}</div>
+        ${stress == 0 ? "" : html`<div>Cohesion Damage: ${stress}</div>`}
+      </div>
+      <div class="f3"><i>Vs</i></div>
+      <div class="tc mh1"> 
+        <div>Keep: ${k}</div>
+        <div class="flex">${player.length > 0 ? against.map((d,i) => DiceImg(d,"a",i)) : pool.map(d => DiceImg([d]))}</div>
+        ${damage > 0 || takeDamage.size != 0 ? html`<div>Explorer Damage: ${damage}</div>` : ""}
+      </div>
     </div>
+    `
+
+    //action options 
+    const ActionOptions = html`
+    <div class="b">What action do you take?</div>
+    ${oppAct.list.map(a=>html`<div class="${act == a ? "bg-green white" : "bg-light-gray"} pointer tc b br2 underline-hover mv1 pa2" onClick=${()=>AddSelected(a)}>${a} [${_act[a][1]}]</div>`)}
+    ${Object.keys(maySupport).length == 0 ? "": html`<div class="b">Use the following Allies/Gear</div>`}
+    ${Object.values(maySupport).map(item=>html`<div class="${support.has(item.id) ? "bg-green white" : "bg-light-gray"} pointer tc b br2 underline-hover mv1 pa2" onClick=${()=>AddSelected(item)}>${item.text}</div>`)}
     `
 
     //explore UI - no close button - have to flee  
     return html`
     <div style="width:600px">
       <h3 class="ma0 mb1">${this.name} Exploring ${where.text}</h3>
-      <h4 class="ma0 mb1">Challenge > ${challenge}: ${focus} > Difficulty ${rank}</h4>
+      <h4 class="ma0 mb1">Challenge > ${challenge}: ${focus} > Cohesion ${cohesion}</h4>
       <div class="mh5">
-        <div class="b">What action do you take?</div>
-        ${actions.list.map(a=>html`<div class="${selected.includes(a) ? "bg-green white" : "bg-light-gray"} pointer tc b br2 underline-hover mv1 pa2" onClick=${()=>AddSelected(a,true)}>${a} [${_act[a][1]}]</div>`)}
-        ${Object.keys(mayAdd).length == 0 ? "": html`<div class="b">Use the following Allies/Gear</div>`}
-        ${Object.values(mayAdd).map(item=>html`<div class="${selected.includes(item.id) ? "bg-green white" : "bg-light-gray"} pointer tc b br2 underline-hover mv1 pa2" onClick=${()=>AddSelected(item.id)}>${item.text}</div>`)}
-        <div class="flex items-center justify-center">
-          ${player.length > 0 ? player.map((d,i) => DiceImg(d,"p",i)) : eDice.map(d => DiceImg([d]))}
-          <span class="f3 mh2"><i>Vs</i></span>
-          ${player.length > 0 ? against.map((d,i) => DiceImg(d,"a",i)) : dice.map(d => DiceImg([d]))}
+        ${player.length > 0 ? "" : ActionOptions}
+        ${DiceDisplay}
+        ${damage > 0 ? DamageList : ""}
+        <div class="flex">
+          ${!showAssignDamage ? "" : html`<div class="w-100 bg-green white pointer tc b underline-hover ma1 pa2" onClick=${()=>AssignDamage()}>Assign Damage</div>`}
+          ${player.length > 0 ? "" : html`<div class="w-100 bg-green white pointer tc b underline-hover ma1 pa2" onClick=${()=>Roll()}>Roll!</div>`}
+          ${!mayFlee ? "" : html`<div class="w-100 bg-green white pointer tc b underline-hover ma1 pa2" onClick=${()=>Flee()}>Flee</div>` }
         </div>
-        ${eDice.length == 0 ? "" : html`<div class="bg-green white pointer tc b br2 underline-hover mv1 pa2" onClick=${()=>Roll()}>Roll!</div>`}
       </div>
     </div>`
   }
@@ -734,8 +924,9 @@ class Explorer {
   }
 
   get UI() {
-    let {app, inventory, allies, load} = this
+    let {app, inventory, allies, load, isHired} = this
     let {html, game} = app
+    let {characters, explorers} = game
 
     const Allies = ()=>html`
     <div class="flex justify-between">
@@ -755,14 +946,11 @@ class Explorer {
   <div class="bg-white-70 br2 mw6 ma1 pa1">
     <div class="flex flex-wrap justify-between">
       <h3 class="ma0 mv1">${this.name}</h3>
-      <div class="pointer b white underline-hover br1 pa1 ${this.isHired ? "bg-green" : "bg-light-blue"}" onClick=${()=>this.hire()}>${this.isHired ? "Hired" : "Hire"}</div>
+      ${this.mayHire ? html`<div class="pointer b white underline-hover br1 pa1 bg-light-blue" onClick=${()=>this.hire()}>Hire</div>` : isHired ? "" : html`<span class="b i">Need More Fame</span>`}
     </div>
     <div class="ph1">
-      <div class="flex justify-between">
-        <div>${this.people.short}</div>
-        <div>${this.cost} gp/month</div>
-      </div>
-      <div>LV: ${this.level} ${this.classes.join("/")}</div>
+      <div>${this.people.short}</div>
+      <div>LV: ${this.level} ${this.advClass}</div>
       <div class="flex justify-center">
         ${Object.entries(this.saves).map(([save,val],i)=>html`
         <div class="mh2">

@@ -12,6 +12,7 @@ const AllResources = ["game/hide/fur", "timber/clay", "herb/spice/dye", "copper/
 */
 const Pricing = (data, sale = false, need =[], surplus=[])=>{
   let [id,base,what,rank] = data
+  base = what == "Essence" ? "Essence" : base
 
   //'resource,essence,material,Weapon,Armor,Equipment,Potion,Magical,Power
   const index = {
@@ -26,25 +27,27 @@ const Pricing = (data, sale = false, need =[], surplus=[])=>{
   const prices = {
     Resource: [2, 2, 5, 4, 10],
     Materials: [1, 1, 0.5, 1, 2.5],
-    Essence: [5],
-    Equipment: [5, 20, 20, 10, 20, 20],
+    Essence: [20],
+    Equipment: [1, 20, 20, 10, 20, 20],
     Armor: [3, 25, 120, 1],
     Weapon: [1, 1, 2, 5, 1, 2, 5],
     Potion: [2.5, 1],
     Magical: [50],
-    Power: [50]
+    Power: [50],
+    Loot : [1],
   }
 
   //based on rank 
   let multiplier = [1, 2, 4, 8, 16, 32][rank]
   multiplier *= need.join().includes(what) ? 2 : surplus.join().includes(what) ? 0.5 : 1 
-  multiplier *= (sale ? 0.5 : 1)
+  multiplier *= (sale && !'Trinket,Gold'.includes(what) ? 0.5 : 1)
 
   let variance = chance.weighted([0.7, 0.8, 0.95, 1.1, 1.2], [1, 2, 4, 2, 1]) + RandBetween(1, 10) / 100
 
   //price index and price 
   let pi = index[base] ? base == "Resource" ? AllResources.reduce((v,r,i)=>r.includes(what) ? i : v, 0) : index[base].indexOf(what) > -1 ? index[base].indexOf(what) : 0 : 0
-  let p = prices[base][pi] * multiplier * variance 
+  let basePrice = 'Trinket,Gold'.includes(what) ? data[4] : prices[base][pi]
+  let p = basePrice * multiplier * variance 
 
   return Number(p.toFixed(1))
 }
@@ -169,19 +172,18 @@ const UI = (region)=>{
   //explorer side of market place allows transfer of coin and learning dark 
   const ExplorerMarket = () => html`
   <div>
-    ${_mayBuy(5) && toDiscover.length>0 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("learnDark",toDiscover)}>Learn Dark of the Region (5g)</div>`: ""}
-    ${buyer.toUnbond.map(p => html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("unbond",p)}>${buyer.name} Unbond > ${p.text} (10g)</div>`)}
-    ${game.coin > 100 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("transferCoin",100)}>Transfer 100g to ${buyer.name}</div>` : ""} 
+    ${_mayBuy(5) && toDiscover.length>0 ? html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("learnDark",toDiscover)}>Learn Dark of the Region (50s)</div>`: ""}
+    ${buyer.toUnbond.map(p => html`<div class="bg-green br2 pointer tc b white underline-hover ma1 pa2" onClick=${()=>buyer.takeAction("unbond",p)}>${buyer.name} Unbond > ${p.text} (100s)</div>`)}
   </div>
   `
 
   //each market place lists items - allows purchase if buyes have coin 
   //add explorer items to sell to market 
-  const ForSale = (item) => html`<div class="pointer underline-hover b tc bg-light-gray br2 mv1 pa1" onClick=${()=>buyer.marketSell(item,item.price)}>1x ${item.text || item.short} (${item.price}g)</div>`
+  const ForSale = (item) => html`<div class="pointer underline-hover b tc bg-light-gray br2 mv1 pa1" onClick=${()=>buyer.marketSell(item,item.price)}>1x ${item.text || item.short} (${item.price*10}s)</div>`
   //manage basic items for purchase 
-  const Explore = (item)=> html`<div class="${_mayBuy(item.price) ? "pointer underline-hover" : ""} b tc bg-light-gray br2 mv1 pa1" onClick=${()=> _mayBuy(item.price) ? buyer.marketBuy(item,region.id) : null}>${item.qty}x ${item.text || item.short} (${item.price}g)</div>`
+  const Explore = (item)=> html`<div class="${_mayBuy(item.price) ? "pointer underline-hover" : ""} b tc bg-light-gray br2 mv1 pa1" onClick=${()=> _mayBuy(item.price) ? buyer.marketBuy(item,region.id) : null}>${item.qty}x ${item.text || item.short} (${item.price*10}s)</div>`
   //build market place doesn't do buying 
-  const Build = (item)=>html`<div class="b tc bg-light-gray br2 mv1 pa1">${item.qty}x ${item.text || item.short} (${item.price}g)</div>`
+  const Build = (item)=>html`<div class="b tc bg-light-gray br2 mv1 pa1">${item.qty}x ${item.text || item.short} (${item.price*10}s)</div>`
 
   return html`
   <div class="fr pointer dim underline-hover hover-red bg-gray br2 white b pa1" onClick=${()=>region.app.updateState("dialog","")}>X</div>

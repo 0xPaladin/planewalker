@@ -19,6 +19,6 @@ import {Faction, Pantheon, Diety, Fronts} from './pantheon.js';
 
 import {Exploration, Jobs} from './quests.js'
 
-import {Power, Potion, Equipment, Weapon, Armor, Resource,Magical,Rewards} from './gear.js'
+import {Power, Potion, Equipment, Weapon, Armor, Materials, Loot, Resource, Magical, Rewards} from './gear.js'
 
-export {Names, POI, Factions, Area, Site, Region, PrimeWorld, Diety, Fronts, Faction, Pantheon, Explorer, Encounter, Professions, Exploration, Jobs, Power, Potion, Equipment, Weapon, Armor, Magical,Resource,Rewards}
+export {Names, POI, Factions, Area, Site, Region, PrimeWorld, Diety, Fronts, Faction, Pantheon, Explorer, Encounter, Professions, Exploration, Jobs, Power, Potion, Equipment, Weapon, Armor, Magical, Resource, Materials, Loot, Rewards}

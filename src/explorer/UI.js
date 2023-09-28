@@ -32,15 +32,17 @@ const Main = (app)=>{
 
 //Main Explorer Display
 const Explorers = (app)=>{
-  const {html, characters, game} = app
+  const {html, game} = app
+  const {characters, explorers} = game
 
   //final html
   return html`
   <div class="flex flex-wrap justify-center">
-    ${Object.values(characters).filter(c => c.isHired).map(c => c.UI)}
+    ${Object.values(app.characters).filter(c => characters.has(c.id)).map(c => c.UI)}
   </div>
+  <h2 class="tc">Avalable Explorers</h2>
   <div class="flex flex-wrap justify-center">
-    ${Object.values(characters).filter(c => !c.isHired).map(c => c.UI)}
+    ${Object.values(app.characters).filter(c => explorers.has(c.id)).map(c => c.UI)}
   </div>
   `
 }

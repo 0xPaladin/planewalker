@@ -7,7 +7,7 @@ const DiceArray = (dice,RNG=chance) => {
   let res = dice.map(d=> {
     let n = Number(d.split("d")[1])
     let r = RandBetween(1,n,RNG)
-    return [d,r,0]
+    return [d,r,-1]
   }).sort((a,b) => b[1]-a[1])
   return res
 }

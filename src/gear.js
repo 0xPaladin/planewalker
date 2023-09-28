@@ -22,42 +22,137 @@ const Competence = ["", "Blessed", "Heroic", "Magnificent", "Epic", "Transcenden
 /*
   Challenge / Action Reference 
 */
-const Challenges = ['Cypher', 'Fight', 'Mechanism', 'People', 'Obstacle']
+const Challenges = ['Cypher', 'Combat', 'Mechanism', 'Diplomacy', 'Obstacle']
 const Actions = ["Finesse", "Move", "Muscle", "Sneak", "Notice", "Shoot", "Study", "Tinker", "Bond", "Command", "Focus", "Sway", "Phyique", "Insight", "Resolve"]
 
 /*
   Die by Rank 
 */
-const DieRank = ["d4","d6","d8","d10","d12","d14"]
+const DieRank = ["d4", "d6", "d8", "d10", "d12", "d14"]
 
 /*
   Magical Item Ability by Rank 
 */
-const MagicItemAbility = ["boon,multiclass,healing/1,1,1","swampwalk,aquatic,mountainwalk,split,multiclass/1,1,1,3,3","flying,haste,healing,takex,multiclass/1,1,2,2,2","healing,takex,multiclass/1,1,1","healing,takex,multiclass/1,1,1","healing,takex,multiclass/1,1,1"]
+const MagicItemAbility = ["boon,multiclass,healing/1,1,1", "swampwalk,aquatic,mountainwalk,split,multiclass/1,1,1,3,3", "flying,haste,healing,takex,multiclass/1,1,2,2,2", "healing,takex,multiclass/1,1,1", "healing,takex,multiclass/1,1,1", "healing,takex,multiclass/1,1,1"]
 const MagicItemText = {
-  swampwalk () { return `of Swamp Walk`},
-  aquatic () { return `of Aquatic Adaptation`},
-  mountainwalk () { return `the Mountain Strider`},
-  flying () { return `of Flying`},
-  haste () { return `of Mobility`},
-  boon (rank,d) { return `of Blessed ${d}`},
-  healing (rank,d) { return `of ${Joins[rank]} Healing (${DieRank[d]})`},
-  split (rank,d) { return `of Resourceful ${d}`},
-  takex (rank,d) { return Challenges.includes(d) ? `of ${d} Mastery [${rank}]` : `of ${Joins[rank]} ${d}s [${rank}]` },
-  multiclass (rank,d) { return `multiclass ${d}`},
+  swampwalk() {
+    return `of Swamp Walk`
+  },
+  aquatic() {
+    return `of Aquatic Adaptation`
+  },
+  mountainwalk() {
+    return `the Mountain Strider`
+  },
+  flying() {
+    return `of Flying`
+  },
+  haste() {
+    return `of Mobility`
+  },
+  boon(rank, d) {
+    return `of Blessed ${d}`
+  },
+  healing(rank, d) {
+    return `of ${Joins[rank]} Healing (${DieRank[d]})`
+  },
+  split(rank, d) {
+    return `of Resourceful ${d}`
+  },
+  takex(rank, d) {
+    return Challenges.includes(d) ? `of ${d} Mastery [${rank}]` : `of ${Joins[rank]} ${d}s [${rank}]`
+  },
+  multiclass(rank, d) {
+    return `multiclass ${d}`
+  },
 }
 
 class Item {
-  constructor (d) {
-    this.data = d 
+  constructor(d) {
+    this.data = d
+    this.isKnown = false
+    this.mayEquip
   }
-  get id () {return this.data[0]}
+  get id() {
+    return this.data[0]
+  }
+  get base() {
+    return this.data[1]
+  }
+  get what() {
+    return this.data[2]
+  }
+  get rank() {
+    return this.data[3]
+  }
+  get usage() {
+    return this.data[5]
+  }
+  get challenge() {
+    let eq = {
+      "Documents": 'Cypher',
+      "Gear": 'Obstacle',
+      "Tools": 'Mechanism',
+      "Implements": 'Spell',
+      "Weapon" : "Combat",
+      "Essence" : this.data[4],
+      "Contact" : "Diplomacy",
+    }
+
+    //get challenge
+    let c = 'Power,Magical,Armor,Loot,Resource'.includes(this.base) ? null : this.base == "Potion" ? this.data[2] : eq[this.what] ? eq[this.what] : null 
+    
+    return 'Magical,Power'.includes(this.base) && this.isKnown ? this.data[4] : c 
+  }
+  get enc() {
+    let eq = 'Documents,Gear,Implements,Tools'
+    let wp = 'Simple,Light Melee,Melee,Heavy Melee,Light Ranged,Ranged,Heavy Ranged'
+    let ar = 'Light,Medium,Heavy,Shield'
+
+    return {
+      "Power": this.mayEquip ? 0.1 : 1,
+      "Magical": 1,
+      "Potion": 0.25,
+      "Equipment": [0.25, 3, 1, 2][eq.split(",").indexOf(this.what)],
+      "Weapon": [0.5, 0.5, 1, 2, 0.5, 1, 2][wp.split(",").indexOf(this.what)],
+      "Armor": [1, 2, 4, 1][ar.split(",").indexOf(this.what)],
+      "Materials": 1,
+      "Essence": 1,
+      "Trinket": 1,
+      "Resource": 1,
+      "Contact": 0,
+    }[this.what]
+  }
+  get text() {
+    return {
+      "Power": `${this.what}: ${this.data[5]} ${this.isKnown ? "(" + this.challenge + ")" : ""} ${DieRank[this.rank]}`,
+      "Potion": `Potion of ${Joins[this.rank]} ${this.what} (${this.data[5]})`,
+      "Magical": `Magical ${this.data[6]} ${MagicItemText[this.data[5]](this.rank, this.challenge)}`,
+      "Equipment": `${this.what} (${this.challenge}) ${DieRank[this.rank]}`,
+      "Weapon": `${this.data[4]} ${DieRank[this.rank]}`,
+      "Armor": `${this.data[4]} [${this.rank}]`,
+      "Materials": `${this.what} ${this.data[4]} ${this.what == "Essence" ? DieRank[this.rank] : ""}`,
+      "Loot": this.what == "Trinket" ? `Trinket [${this.rank}]` : `${this.data[4]} Gold`,
+      "Resource": `Resource: ${this.data[3]}`,
+      "Ally": `${this.what} ${DieRank[this.rank]}`
+    }[this.base]
+  }
+  //for armor 
+  get health() {
+    let dmg = this.data[5]
+    let what = this.what
+    let max = what == "Medium" ? 2 : what == "Heavy" ? 3 : 1
+    return {
+      now: max - dmg,
+      max
+    }
+  }
 }
 
 const Power = (opts={})=>{
   let id = opts.id || chance.hash()
   let RNG = new Chance(id)
-  let {rank=Difficulty(RNG), what = RNG.pickone(PowerTypes)} = opts
+  let {rank=Difficulty(RNG), what=RNG.pickone(PowerTypes)} = opts
 
   //get name form 
   let _n = WeightedString(Templates, RNG).split(".")
@@ -78,16 +173,7 @@ const Power = (opts={})=>{
   }
   , [])
 
-  //what,name,rank,action,challenge,essence 
-  return {
-    data : [id,"Power", what, rank, name, challenge, essence, true],
-    get id () {return this.data[0]},
-    get enc () {return this.mayEquip ? 0.1 : 1},
-    isKnown : false,
-    get challenge () { return this.isKnown ? this.data[5] : null},
-    get mayEquip () {return this.data[7] },
-    get text () { return `${this.data[2]}: ${this.data[4]} ${this.isKnown ? "("+this.data[5]+")" : ""} ${DieRank[this.data[3]]}` } 
-  }
+  return new Item([id, "Power", what, rank, challenge, name, essence])
 }
 
 const Potion = (opts={})=>{
@@ -99,25 +185,20 @@ const Potion = (opts={})=>{
   let val = what == "Healing" ? ["1d2", "1d4", "1d6", "1d8", "1d10", "1d12"][rank] : [0, 0, 1, 3, 9, 30][rank]
 
   //what,rank, used, remaining 
-  return {
-    data : [id,"Potion", what, rank, false, val],
-    get id () {return this.data[0]},
-    enc : 0.25,
-    get text () { return `Potion of ${Joins[this.data[3]]} ${this.data[2]} (${this.data[5]})`} 
-  }
+  return new Item([id, "Potion", what, rank, false, val])
 }
 
 const Magical = (opts={})=>{
   let id = opts.id || chance.hash()
   let RNG = new Chance(id)
-  let {rank=Difficulty(RNG), what=RNG.pickone(["Attire", "Trinket", "Jewelry"])} = opts
+  let {rank=Difficulty(RNG), what=RNG.pickone(["Attire", "Bauble", "Jewelry"])} = opts
 
   //what,form,rank,ability 
   let item = ["Magical"]
 
   //ability 
-  let _ability = WeightedString(MagicItemAbility[rank],RNG)
-  let extra = _ability == "boon" ? RNG.pickone(Actions) : 'split,takex'.includes(_ability) ? RNG.pickone(RNG.pickone([Challenges,PowerTypes])) : _ability == "multiclass" ? Professions.adventurer(RNG)[0]: null
+  let _ability = WeightedString(MagicItemAbility[rank], RNG)
+  let extra = _ability == "boon" ? RNG.pickone(Actions) : 'split,takex'.includes(_ability) ? RNG.pickone(RNG.pickone([Challenges, PowerTypes])) : _ability == "multiclass" ? Professions.adventurer(RNG)[0] : null
 
   //get name form 
   let _n = WeightedString(Templates, RNG).split(".")
@@ -125,63 +206,42 @@ const Magical = (opts={})=>{
 
   const Forms = {
     Attire: 'shoes/boots,pants/skirt,dress/robe,shirt/blouse,belt,gloves/gauntlets,cape/cloak,hat/hood,scarf/shawl',
-    Trinket: 'pouch/bag/quiver/vial,rope/chain,cup/goblet/chalice,book/scroll,ornament,miniature/statue/figurine,toy,box/case,wand/staff/rod',
+    Bauble: 'pouch/bag/quiver/vial,rope/chain,cup/goblet/chalice,book/scroll,ornament,miniature/statue/figurine,toy,box/case,wand/staff/rod',
     Jewelry: 'earings,ring,bracelet/anklet/armband,brooch/pin,belt,necklace/locket,scepter/orb,circlet/crown',
   }
 
   let _form = item.form = RNG.pickone(Forms[what].split(","))
   let form = capitalize(RNG.pickone(_form.split("/")))
 
-  return {
-    data : [id,"Magical",what,rank,form,_ability,extra],
-    get id () {return this.data[0]},
-    isKnown : false,
-    get challenge () { return this.isKnown ? this.data[6] : null},
-    get actions () { return this.isKnown ? [this.data[6]] : [null]},
-    get power () { return this.isKnown ? [this.data[6]] : [null]},
-    enc : 1,
-    get text () { return `Magical ${this.data[4]} ${MagicItemText[this.data[5]](this.data[3],this.data[6])}`} 
-  }
+  return new Item([id, "Magical", what, rank, extra, _ability, form])
 }
 
 const Equipment = (opts={})=>{
   let eq = 'Documents,Gear,Implements,Tools'
-  
+
   let id = opts.id || chance.hash()
   let RNG = new Chance(id)
-  let {rank=Difficulty(RNG), what=WeightedString(eq+"/1,2,1,2", RNG)} = opts
+  let {rank=Difficulty(RNG), what=WeightedString(eq + "/1,2,1,2", RNG)} = opts
 
-  //['Cypher', 'Fight', 'Mechanism', 'People', 'Obstacle']
-  let challenge = ""
-  if (what == "Documents") {
-    challenge = RNG.pickone(['Cypher', 'People', 'Mechanism'])
-  } else if (what == "Gear") {
-    challenge = RNG.pickone(['Obstacle'])
-  } else if (what == "Tools") {
-    challenge = 'Mechanism'
-  } else if (what == "Implements") {
-    challenge = 'Spell'
-  }
+  let challenge = {
+    "Documents": 'Cypher',
+    "Gear": 'Obstacle',
+    "Tools": 'Mechanism',
+    "Implements": 'Spell'
+  }[what]
 
   let d = RNG.weighted([4, 6, 8, 10, 12], [1, 2, 4, 2, 1])
 
   //what,rank,d, challenge, specific 
-  return {
-    data : [id,"Equipment", what, rank, d, challenge, ""],
-    get id () {return this.data[0]},
-    get challenge () { return this.data[5]},
-    get power () { return this.data[5]},
-    get enc () { return [0.5,3,1,2][eq.split(",").indexOf(this.data[2])]},
-    get text () { return `${this.data[2]} (${this.data[5]}) ${DieRank[this.data[3]]}`}
-  }
+  return new Item([id, "Equipment", what, rank, challenge, d])
 }
 
 const Weapon = (opts={})=>{
   let wp = 'Simple,Light Melee,Melee,Heavy Melee,Light Ranged,Ranged,Heavy Ranged'
-  
+
   let id = opts.id || chance.hash()
   let RNG = new Chance(id)
-  let {rank=Difficulty(RNG), what=WeightedString(wp+"/4,2,2,1,2,2,1", RNG)} = opts
+  let {rank=Difficulty(RNG), what=WeightedString(wp + "/4,2,2,1,2,2,1", RNG)} = opts
 
   const Forms = {
     "Simple": 'Club,Dagger,Hatchet,Staff,Spear,Sling/1,1,1,1,1,1',
@@ -197,20 +257,14 @@ const Weapon = (opts={})=>{
   let d = RNG.weighted([8, 10, 12], [6, 3, 1])
 
   //what, detail,rank,d
-  return {
-    data : [id,"Weapon", what, rank, form, d],
-    get id () {return this.data[0]},
-    get challenge () { return "Monster"},
-    get enc () { return [0.5,0.5,1,2,0.5,1,2][wp.split(",").indexOf(this.data[2])] },
-    get text () { return `${this.data[4]} ${DieRank[this.data[3]]}`}
-  } 
+  return new Item([id, "Weapon", what, rank, form, d])
 }
 
 const Armor = (opts={})=>{
   let ar = 'Light,Medium,Heavy,Shield'
   let id = opts.id || chance.hash()
   let RNG = new Chance(id)
-  let {rank=Difficulty(RNG), what=WeightedString(ar+"/4,2,1,4", RNG)} = opts
+  let {rank=Difficulty(RNG), what=WeightedString(ar + "/4,2,1,4", RNG)} = opts
 
   const Forms = {
     Light: 'War Shirt,Leather',
@@ -220,24 +274,17 @@ const Armor = (opts={})=>{
 
   let form = what != "Shield" ? RNG.pickone(Forms[what].split(",")) : "Shield"
 
-  let uses = what == "Medium" ? 2 : what == "Heavy" ? 3 : 1
-
-  //what, detail,rank,use
-  return {
-    data : [id,"Armor", what, rank, form, uses],
-    get id () {return this.data[0]},
-    get enc () { return [1,2,4,1][ar.split(",").indexOf(this.data[2])] },
-    get text () { return `${this.data[4]} [${this.data[3]}]`}
-  } 
+  //id,armor,what,rank,form,dmg 
+  return new Item([id, "Armor", what, rank, form, 0])
 }
 
 const Materials = (region,opts={})=>{
-  let res = 'Trinket,Materials,Essence,Gold'
+  let res = 'Materials,Essence'
   let id = opts.id || chance.hash()
   let RNG = new Chance(id)
-  let {rank=Difficulty(RNG), what=WeightedString(res+"/4,2,1,2", RNG)} = opts
+  let {rank=Difficulty(RNG), what=WeightedString(res + "/3,1", RNG)} = opts
 
-  let r = [what,rank]
+  let r = []
 
   /*
   Services and Living Expenses
@@ -255,40 +302,48 @@ const Materials = (region,opts={})=>{
   essence 	rank, type,d
   gold	rank, amt
   */
-  let d = (3+rank)*2
-  let gold = SumDice(["1d4","2d6","4d6+25","5d20+100","4d100+400","8d200+1600"][rank],RNG)
-  
+  let d = (3 + rank) * 2
+
   if (what == "Essence") {
-    r.push(RNG.pickone(region.children.filter(c=>c.essence)).essence,d)
+    r.push(RNG.pickone(region.children.filter(c=>c.essence)).essence, d)
   } else if (what == "Materials") {
-    r.push(RNG.pickone(["martial", "potions", "clothing", "equipment", "jewelry"]),d)
-  }
-  else if (what == "Gold") {
-    r.push(gold)
-  }
-  else if (what == "Trinket") {
-    r.push(Math.round(gold/2))
+    r.push(RNG.pickone(["martial", "potions", "clothing", "equipment", "jewelry"]), d)
   }
 
-  return {
-    data : [id,"Materials",...r],
-    get id () {return this.data[0]},
-    get what () {return this.data[2]},
-    get enc () { return [1,1,1,0.5,this.data[5]/100][res.split(",").indexOf(this.what)] },
-    get text () { return `${this.what} ${this.what=='Trinket' ? "" : this.data[4]}${'Essence,Materials'.includes(this.what) ? " d"+this.data[5] : ""}`}
-  }
+  return new Item([id, "Materials", what, rank, ...r])
 }
 
-const Resource = (opts = {})=>{
-  return {
-    data : [opts.what,"Resource",opts.what,0],
-    get id () {return this.data[0]},
-    get enc () { return 1},
-    get text () { return `Resource: ${this.data[2]}`}
-  }
+const Loot = (opts={})=>{
+  let loot = 'Trinket,Gold'
+  let id = opts.id || chance.hash()
+  let RNG = new Chance(id)
+  let {rank=Difficulty(RNG), what=WeightedString(loot + "/1,1", RNG)} = opts
+
+  let gold = SumDice(["1d4", "2d6", "4d6+25", "5d20+100", "4d100+400", "8d200+1600"][rank], RNG)
+
+  return new Item([id, "Loot", what, rank, what == "Trinket" ? gold / 2 : gold])
 }
 
-const Ally = (region,opts={})=>{}
+const Resource = (opts={})=>{
+  return new Item([opts.what, "Resource", "Resource", opts.what, null])
+}
+
+const Ally = (region,opts={})=>{
+  let id = opts.id || chance.hash()
+  let RNG = new Chance(id)
+  let rarity = opts.rank === undefined ? Difficulty(RNG) : opts.rank
+  //Explorer, NPC, Contact  
+  let what = WeightedString('Explorer,NPC,Contact/2,4,4', RNG)
+
+  if (what == "NPC") {
+    return region.NPC({
+      id,
+      rarity
+    })
+  }
+
+  return new Item([id, "Ally", what, rarity, "Diplomacy"])
+}
 
 /*
   Give rewards based upon exploration 
@@ -301,8 +356,8 @@ const ExploreRewards = {
   "resource": "Resource,Essence,Trinket,Tools/5,1,2,2",
   "encounter": "Trinket,Materials,Essence,martial,Implements/2,3,1,3,1",
   "dungeon": "Trinket,Gold,Essence,Power,item/3,3,1,1,2",
-  "settlement": "Trinket,Materials,Resource,item,Ally/3,2,1,2,2",
-  "faction": "Trinket,Gold,Documents,Ally/2,1,4,3",
+  "settlement": "Trinket,Materials,Resource,item,Ally/1,2,1,3,3",
+  "faction": "Trinket,Gold,Ally/2,1,7",
   "martial": "Weapon,Armor/1,1",
   "equipment": "Documents,Gear,Implements,Tools/1,2,1,2",
   "item": "martial,equipment,Magical,Power/4,4,1,1",
@@ -324,23 +379,26 @@ const Rewards = (region,exploration)=>{
     Magical,
     Equipment,
     Weapon,
-    Armor
+    Armor,
+    Resource,
+    Loot,
+    Ally,
   }
   let eq = 'Documents,Gear,Implements,Supplies,Tools'
 
-  let rank = diff > 0 ? RNG.rpg(diff + "d6").reduce((sum,r)=>sum + ([0, 1, 1, 1, 1, 2][r]), 0) : 0
+  let rank = exploration.rank
+  //options 
+  let wro = {
+    what,
+    rank
+  }
+    , ro = {
+    rank
+  };
   //get reward 
-  exploration.reward = 'Trinket,Resource,Materials,Essence,Gold'.includes(what) ? Resource(region, {
-    what,
-    rank
-  }) : what == "Ally" ? Ally(region,{rank}) : eq.includes(what) ? Equipment({
-    what,
-    rank
-  }) : Gen[what]({
-    rank
-  })
+  exploration.reward = 'Materials,Essence'.includes(what) ? Materials(region, wro) : what == "Ally" ? Ally(region, ro) : eq.includes(what) ? Equipment(wro) : 'Gold,Trinket' ? Loot(wro) : Gen[what](ro)
 
   return exploration
 }
 
-export {Power, Potion, Equipment, Weapon, Armor, Rewards,Materials,Resource,Magical}
+export {Power, Potion, Equipment, Weapon, Armor, Rewards, Materials, Loot, Resource, Magical}
